@@ -1519,6 +1519,7 @@ int main(int argc, char **argv)
   static int mhflag = 0;
   static int nolinenosflag = 0;
   static int noResort = 0;
+  static int nconflict = 0;
   static struct s_options options[] = {
     {OPT_FLAG, "b", (char*)&basisflag, "Print only the basis in report."},
     {OPT_FLAG, "c", (char*)&compress, "Don't compress the action table."},
@@ -1538,6 +1539,7 @@ int main(int argc, char **argv)
     {OPT_FLAG, "x", (char*)&version, "Print the version number."},
     {OPT_FSTR, "T", (char*)handle_T_option, "Specify a template file."},
     {OPT_FSTR, "W", 0, "Ignored.  (Placeholder for '-W' compiler options.)"},
+    {OPT_INT,  "nconflicts", (char *)&nconflict, "Expect N shift/reduce conflicts."},
     {OPT_FLAG,0,0,0}
   };
   int i;
@@ -1653,7 +1655,10 @@ int main(int argc, char **argv)
   }
 
   /* return 0 on success, 1 on failure. */
-  exitcode = ((lem.errorcnt > 0) || (lem.nconflict > 0)) ? 1 : 0;
+  exitcode = 0;
+  if (lem.errorcnt > 0) exitcode = 1;
+  if (lem.nconflict && lem.nconflict != nconflict) exitcode = 1;
+  //exitcode = ((lem.errorcnt > 0) || (lem.nconflict > 0)) ? 1 : 0;
   exit(exitcode);
   return (exitcode);
 }

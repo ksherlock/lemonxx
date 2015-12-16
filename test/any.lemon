@@ -1,0 +1,123 @@
+
+%include {
+
+#include <vector>
+#include <string>
+#include <cstdio>
+#include <cassert>
+#include <stdlib.h>
+#include "any.h"
+
+#define YYMALLOCARGTYPE size_t
+
+/*
+ * This was _going_ to use std::experimental::any
+ * as the token type.  Unfortunately, my current version of
+ * libcxx doesn't include experimental/any.  In it's place,
+ * a std::string/int pair. 
+ */
+
+/*
+ * note - the copy constructors are deleted.  only the
+ * move constructors are used in the generated parser!
+ */
+struct token {
+	token() = default;
+	token(token &&) = default;
+	token(const token &) = delete;
+
+	token &operator=(token &&) = default;
+	token &operator=(const token &) = delete;
+
+	token(int value) : intValue(value) {}
+	token(const std::string &value) : stringValue(value) {}
+	token(std::string &&value) : stringValue(std::move(value)) {}
+	token(const char *cp) : token(std::string(cp)) {}
+
+
+
+	operator const std::string &() const { return stringValue; }
+	operator int() const { return intValue; }
+
+
+	std::string stringValue;
+	int intValue = 0;
+};
+
+
+void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
+void ParseFree(void *p, void (*freeProc)(void*));
+
+// could also use "token &" or "const token &" (needs copy constructor enabled)
+void Parse(void *yyp,int yymajor, token &&yyminor);
+
+int main(int argc, char ** argv) {
+	void *p;
+
+	p = ParseAlloc(malloc);
+
+	Parse(p, STRING, "string 1");
+	Parse(p, STRING, "string 2");
+	Parse(p, STRING, "string 3");
+
+	Parse(p, NUMBER, 1);
+	Parse(p, NUMBER, 2);
+	Parse(p, NUMBER, 3);
+
+	Parse(p, STRING, "another 1");
+	Parse(p, STRING, "another 2");
+	Parse(p, STRING, "another 3");
+
+	Parse(p, 0, 0);
+
+
+	ParseFree(p, free);
+	return 0;
+}
+
+}
+
+%token_type {token &&}
+%type number_list{std::vector<int>}
+%type string_list{std::vector<std::string>}
+
+program ::= list.
+program ::= .
+
+list ::= any_list.
+list ::= list any_list.
+
+any_list ::= string_list(L). {
+	printf("string list!\n");
+	for (const auto &s : L)
+		printf("%s\n", s.c_str());	
+}
+
+any_list ::= number_list(L). {
+	printf("number list!\n");
+	for (auto i : L)
+		printf("%d\n", i);	
+}
+
+
+number_list(LHS) ::= number_list(L) NUMBER(RHS). {
+	LHS = std::move(L);
+	LHS.push_back(RHS);
+	//LHS.push_back(any_cast<int>(RHS));
+}
+
+number_list(LHS) ::= NUMBER(RHS). {
+	LHS.push_back(RHS);
+	//LHS.push_back(any_cast<int>(RHS));
+}
+
+
+string_list(LHS) ::= string_list(L) STRING(RHS). {
+	LHS = std::move(L);
+	LHS.emplace_back(std::move(RHS.stringValue));
+	//LHS.emplace_back(any_cast<std::string>(std::move(RHS)));
+}
+string_list(LHS) ::= STRING(RHS). {
+	LHS.emplace_back(std::move(RHS.stringValue));
+	//LHS.emplace_back(any_cast<std::string>(std::move(RHS)));
+}

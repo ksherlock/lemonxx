@@ -1548,7 +1548,7 @@ int main(int argc, char **argv)
 
   OptInit(argv,options,stderr);
   if( version ){
-     printf("Lemon version 1.0\n");
+     printf("Lemon-- version 1.0\n");
      exit(0); 
   }
   if( OptNArgs()!=1 ){
@@ -3271,7 +3271,7 @@ PRIVATE void tplt_xfer(char *name, FILE *in, FILE *out, int *lineno)
 ** a pointer to the opened file. */
 PRIVATE FILE *tplt_open(struct lemon *lemp)
 {
-  static char templatename[] = "lempar.c";
+  static char templatename[] = "lempar.cpp";
   char buf[1000];
   FILE *in;
   char *tpltname;
@@ -3489,6 +3489,36 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
 
   append_str(0,0,0,0);
 
+  // set up aliases.
+  if (rp->lhsalias) {
+    // A -> auto &A =
+    append_str("auto &", 0, 0, 0);
+    append_str(rp->lhsalias, 0, 0, 0);
+    append_str("=yy_constructor<", 0, 0, 0);
+    append_str(rp->lhs->datatype ? rp->lhs->datatype : "ParseTOKENTYPE", 0, 0, 0);
+    append_str(">(std::addressof(yygotominor.yy%d));\n", 0, rp->lhs->dtnum, 0);
+  }
+
+
+  for(i=0; i<rp->nrhs; i++){
+    if (rp->rhsalias[i]) {
+
+      struct symbol *sp = rp->rhs[i];
+      int dtnum;
+      if( sp->type==MULTITERMINAL ){
+        dtnum = sp->subsym[0]->dtnum;
+      }else{
+        dtnum = sp->dtnum;
+      }
+
+      append_str("auto &", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str("=yy_cast<", 0, 0, 0);
+      append_str(sp->datatype ? sp->datatype : "ParseTOKENTYPE", 0, 0, 0);
+      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
+    }
+  }
+
   /* This const cast is wrong but harmless, if we're careful. */
   for(cp=(char *)rp->code; *cp; cp++){
     if( ISALPHA(*cp) && (cp==rp->code || (!ISALNUM(cp[-1]) && cp[-1]!='_')) ){
@@ -3496,9 +3526,9 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
       for(xp= &cp[1]; ISALNUM(*xp) || *xp=='_'; xp++);
       saved = *xp;
       *xp = 0;
-      if( rp->lhsalias && strcmp(cp,rp->lhsalias)==0 ){
-        append_str("yygotominor.yy%d",0,rp->lhs->dtnum,0);
-        cp = xp;
+      if(rp->lhsalias && strcmp(cp,rp->lhsalias)==0 ){
+        //append_str("yygotominor.yy%d",0,rp->lhs->dtnum,0);
+        //cp = xp;
         lhsused = 1;
       }else{
         for(i=0; i<rp->nrhs; i++){
@@ -3507,7 +3537,9 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
               /* If the argument is of the form @X then substituted
               ** the token number of X, not the value of X */
               append_str("yymsp[%d].major",-1,i-rp->nrhs+1,0);
+              cp = xp;
             }else{
+              /*
               struct symbol *sp = rp->rhs[i];
               int dtnum;
               if( sp->type==MULTITERMINAL ){
@@ -3516,8 +3548,9 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
                 dtnum = sp->dtnum;
               }
               append_str("yymsp[%d].minor.yy%d",0,i-rp->nrhs+1, dtnum);
+             */
             }
-            cp = xp;
+            //cp = xp;
             used[i] = 1;
             break;
           }
@@ -3544,7 +3577,24 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
         "Label %s for \"%s(%s)\" is never used.",
         rp->rhsalias[i],rp->rhs[i]->name,rp->rhsalias[i]);
       lemp->errorcnt++;
-    }else if( rp->rhsalias[i]==0 ){
+    }
+    // generate destructors for all RHS.
+    if (rp->rhsalias[i]) {
+      struct symbol *sp = rp->rhs[i];
+      int dtnum;
+      if( sp->type==MULTITERMINAL ){
+        dtnum = sp->subsym[0]->dtnum;
+      }else{
+        dtnum = sp->dtnum;
+      }
+
+      append_str("yy_destructor(", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str("); ", 0, 0, 0);
+    }
+
+    #if 0
+    else if( rp->rhsalias[i]==0 ){
       if( has_destructor(rp->rhs[i],lemp) ){
         append_str("  yy_destructor(yypParser,%d,&yymsp[%d].minor);\n", 0,
            rp->rhs[i]->index,i-rp->nrhs+1);
@@ -3552,6 +3602,8 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
         /* No destructor defined for this term */
       }
     }
+    #endif
+
   }
   if( rp->code ){
     cp = append_str(0,0,0,0);
@@ -3699,10 +3751,10 @@ void print_stack_union(
   if( mhflag ){ fprintf(out,"#endif\n"); lineno++; }
   fprintf(out,"typedef union {\n"); lineno++;
   fprintf(out,"  int yyinit;\n"); lineno++;
-  fprintf(out,"  %sTOKENTYPE yy0;\n",name); lineno++;
+  fprintf(out,"  yy_storage<%sTOKENTYPE>::type yy0;\n",name); lineno++;
   for(i=0; i<arraysize; i++){
     if( types[i]==0 ) continue;
-    fprintf(out,"  %s yy%d;\n",types[i],i+1); lineno++;
+    fprintf(out,"  yy_storage<%s>::type yy%d;\n",types[i],i+1); lineno++;
     free(types[i]);
   }
   if( lemp->errsym->useCnt ){
@@ -3815,7 +3867,7 @@ void ReportTable(
 
   in = tplt_open(lemp);
   if( in==0 ) return;
-  out = file_open(lemp,".c","wb");
+  out = file_open(lemp,".cpp","wb");
   if( out==0 ){
     fclose(in);
     return;
@@ -4138,6 +4190,28 @@ void ReportTable(
   ** the stack while processing errors or while destroying the parser. 
   ** (In other words, generate the %destructor actions)
   */
+
+  // generate terminals
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if (sp->type!=TERMINAL ) continue;
+    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+  }
+  fprintf(out,"      yy_destructor<%sParseTOKENTYPE>(std::addressof(yypminor->yy0));\n", lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      break;\n"); lineno++;
+
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if (sp->type == TERMINAL || !sp->datatype) continue;
+    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      break;\n"); lineno++;
+  }
+
+
+#if 0
+
+
   if( lemp->tokendest ){
     int once = 1;
     for(i=0; i<lemp->nsymbol; i++){
@@ -4176,8 +4250,17 @@ void ReportTable(
   }
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
-    if( sp==0 || sp->type==TERMINAL || sp->destructor==0 ) continue;
+    if( sp==0 || sp->type==TERMINAL  /* || sp->destructor==0 */) continue;
+    if (sp->datatype == 0 && sp->destructor == 0) continue;
+
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+
+    if (sp->destructor == 0) {
+      fprintf(out, "      yy_destroy<%s>(&(yypminor->yy%d));\n", sp->datatype, sp->dtnum);
+      lineno++;
+      fprintf(out,"      break;\n"); lineno++;
+      continue;
+    }
 
     /* Combine duplicate destructors into a single case */
     for(j=i+1; j<lemp->nsymbol; j++){
@@ -4194,7 +4277,49 @@ void ReportTable(
     emit_destructor_code(out,lemp->symbols[i],lemp,&lineno);
     fprintf(out,"      break;\n"); lineno++;
   }
+#endif
+
   tplt_xfer(lemp->name,in,out,&lineno);
+
+
+  // generate move commands. 
+  // yyDest is constructed.  yySource is destructed.
+  // generate terminals
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if (sp->type!=TERMINAL ) continue;
+    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+  }
+  fprintf(out,"      yy_move<%sParseTOKENTYPE>(std::addressof(yyDest->yy0), std::addressof(yySource->yy0));\n", lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      break;\n"); lineno++;  
+  
+  /*
+  fprintf(out,"      { auto &tmp = yy_cast<%sParseTOKENTYPE>(std::addressof(yySource->yy0));\n", lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      yy_constructor<%sParseTOKENTYPE>( std::addressof(yyDest->yy0), std::move(tmp));\n", lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      yy_destructor<%sParseTOKENTYPE>(tmp);\n", lemp->name); lineno++;  
+  fprintf(out,"      break; }\n"); lineno++;  
+  */
+
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if (sp->type == TERMINAL || !sp->datatype) continue;
+    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+
+    fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy%d), std::addressof(yySource->yy%d));\n",
+      sp->datatype, sp->dtnum, sp->dtnum); lineno++;
+    fprintf(out,"      break;\n"); lineno++;  
+    /*
+    fprintf(out,"      { auto &tmp = yy_cast<%s>(std::addressof(yySource->yy%d));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      yy_constructor<%s>( std::addressof(yyDest->yy%d), std::move(tmp));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      yy_destructor<%s>(tmp);\n", sp->datatype); lineno++;  
+    fprintf(out,"      break; }\n"); lineno++;
+    */
+
+  }
+
+
+  tplt_xfer(lemp->name,in,out,&lineno);
+
 
   /* Generate code which executes whenever the parser stack overflows */
   tplt_print(out,lemp,lemp->overflow,&lineno);

@@ -3492,7 +3492,7 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
   // set up aliases.
   if (rp->lhsalias) {
     // A -> auto &A =
-    append_str("auto &", 0, 0, 0);
+    append_str("\nauto &", 0, 0, 0);
     append_str(rp->lhsalias, 0, 0, 0);
     append_str("=yy_constructor<", 0, 0, 0);
     append_str(rp->lhs->datatype ? rp->lhs->datatype : "ParseTOKENTYPE", 0, 0, 0);
@@ -3572,6 +3572,17 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
   /* Generate destructor code for RHS symbols which are not used in the
   ** reduce code */
   for(i=0; i<rp->nrhs; i++){
+
+    struct symbol *sp = rp->rhs[i];
+    int dtnum;
+    if( sp->type==MULTITERMINAL ){
+      dtnum = sp->subsym[0]->dtnum;
+    }else{
+      dtnum = sp->dtnum;
+    }
+
+
+
     if( rp->rhsalias[i] && !used[i] ){
       ErrorMsg(lemp->filename,rp->ruleline,
         "Label %s for \"%s(%s)\" is never used.",
@@ -3580,17 +3591,16 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
     }
     // generate destructors for all RHS.
     if (rp->rhsalias[i]) {
-      struct symbol *sp = rp->rhs[i];
-      int dtnum;
-      if( sp->type==MULTITERMINAL ){
-        dtnum = sp->subsym[0]->dtnum;
-      }else{
-        dtnum = sp->dtnum;
-      }
 
       append_str("yy_destructor(", 0, 0, 0);
       append_str(rp->rhsalias[i], 0, 0, 0);
-      append_str("); ", 0, 0, 0);
+      append_str(");\n", 0, 0, 0);
+    }
+    else {
+      // also generate destructors if NOT referenced!
+      append_str("yy_destructor<", 0, 0, 0);
+      append_str(sp->datatype ? sp->datatype : "ParseTOKENTYPE", 0, 0, 0);
+      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
     }
 
     #if 0

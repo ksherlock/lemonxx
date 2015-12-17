@@ -1568,6 +1568,7 @@ int main(int argc, char **argv)
   lem.nolinenosflag = nolinenosflag;
   Symbol_new("$");
   lem.errsym = Symbol_new("error");
+  lem.errsym->datatype = "int";
   lem.errsym->useCnt = 0;
 
   /* Parse the input file */

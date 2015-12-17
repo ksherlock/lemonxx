@@ -1,4 +1,5 @@
 CC = clang
 CFLAGS = -g -std=c89
 
-lemon-- : lemon.c
+lemon++ : lemon.c
+	$(CC) $(CFLAGS) $< -o $@

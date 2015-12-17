@@ -1,0 +1,190 @@
+
+%include {
+	#include <stdlib.h>
+	#include "expr.h"
+
+	typedef std::unique_ptr<struct node> node_ptr;	
+
+	struct node {
+		node(node &&) = default;
+		node(const node &) = delete;
+		node() = default;
+
+		virtual ~node() = default;
+		virtual void print(int indent) = 0;
+	};
+
+
+
+	struct binary_node : public node {
+		char op;
+		node_ptr left;
+		node_ptr right;
+
+		binary_node(binary_node &&) = default;
+		binary_node(char o, node_ptr &&l, node_ptr &&r) : 
+			op(o), left(std::move(l)), right(std::move(r))
+		{}
+
+		virtual void print(int indent);
+	};
+
+	struct unary_node : public node {
+		char op;
+		node_ptr child;
+
+		unary_node(unary_node &&) = default;
+		unary_node(char o, node_ptr &&c) : 
+			op(o), child(std::move(c))
+		{}
+
+		virtual void print(int indent);
+	};
+
+	struct int_node : public node {
+		int value;
+		int_node(int_node &&) = default;
+		int_node(int v) : value(v) {}
+
+		virtual void print(int indent);
+	};
+
+	void int_node::print(int indent) {
+		printf("%d ", value);
+	}
+
+	void binary_node::print(int indent) {
+		printf ("(%c ", op);
+		left->print(indent + 2);
+		right->print(indent + 2);
+		printf(") ");
+	}
+
+	void unary_node::print(int indent) {
+		printf("(%c ", op);
+		child->print(indent + 2);
+		printf(") ");
+	}
+
+#define YYMALLOCARGTYPE size_t
+void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
+void ParseFree(void *p, void (*freeProc)(void*));
+void Parse(void *yyp,int yymajor, int yyminor);
+
+	int main(int argc, char **argv) {
+
+		void *p = ParseAlloc(malloc);
+		for (int i = 1; i < argc; ++i) {
+			const char *cp = argv[i];
+			char c;
+			while ((c = *cp++)) {
+				switch(c) {
+				case '0':
+				case '1':
+				case '2':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+				case '7':
+				case '8':
+				case '9':
+					Parse(p, NUMBER, c-'0');
+					break;
+
+#undef __
+#define __(k,v) case k: Parse(p,v,0); break;
+				__('+', PLUS)
+				__('-', MINUS)
+				__('*', TIMES)
+				__('/', DIVIDE)
+				__('%', MOD)
+				__('~', NOT)
+				__('(', LPAREN)
+				__(')', RPAREN)
+#undef __
+				default:
+					break;
+				}
+			}
+		}
+		Parse(p, 0, 0);
+		ParseFree(p, free);
+		return 0;
+	}
+
+}
+
+%left PLUS MINUS.
+%left TIMES DIVIDE MOD.
+%right NOT.
+
+%token_type {int}
+%type number {int}
+
+%type term {node_ptr}
+%type expr {node_ptr}
+%type unary {node_ptr}
+
+program ::= expr(E). {
+	
+	E->print(0);
+	printf("\n");
+}
+
+expr(LHS) ::= unary(RHS). {
+	LHS = std::move(RHS);
+} 
+
+expr(LHS) ::= expr(A) PLUS expr(B). {
+	LHS = std::make_unique<binary_node>('+', std::move(A), std::move(B));
+}
+
+expr(LHS) ::= expr(A) MINUS expr(B). {
+	LHS = std::make_unique<binary_node>('-', std::move(A), std::move(B));
+}
+
+expr(LHS) ::= expr(A) TIMES expr(B). {
+	LHS = std::make_unique<binary_node>('*', std::move(A), std::move(B));
+}
+
+expr(LHS) ::= expr(A) DIVIDE expr(B). {
+	LHS = std::make_unique<binary_node>('/', std::move(A), std::move(B));
+}
+
+expr(LHS) ::= expr(A) MOD expr(B). {
+	LHS = std::make_unique<binary_node>('%', std::move(A), std::move(B));
+}
+
+unary(LHS) ::= term(RHS). {
+	LHS = std::move(RHS);
+}
+
+unary(LHS) ::= PLUS term(RHS). [NOT] {
+	LHS = std::move(RHS);
+}
+unary(LHS) ::= MINUS unary(RHS). [NOT] {
+	LHS = std::make_unique<unary_node>('-', std::move(RHS));
+}
+
+unary(LHS) ::= NOT unary(RHS). [NOT] {
+	LHS = std::make_unique<unary_node>('~', std::move(RHS));
+}
+
+term(LHS) ::= number(N). {
+	LHS = std::make_unique<int_node>(N);
+}
+
+term(LHS) ::= LPAREN expr(E) RPAREN. {
+	LHS = std::move(E);
+}
+
+
+// this should really be performed via the lexer!  
+number(LHS) ::= NUMBER(N). {
+	LHS = N;
+}
+
+number(LHS) ::= number(NN) NUMBER(N). {
+	LHS = NN * 10 + N;
+}

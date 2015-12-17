@@ -30,10 +30,10 @@ pointers as much (unless, of course, you want to!)
     }
 
 The left-hand-side variable (`LHS`) will be default constructed before the code
-is executed.  The right-hand-side variables (`L`, and `N`) will be destructed 
-after the code is executed. (Lemon zero-initializes the left-hand side memory
-and  will only call the %destructor on the right-hand side for tokens that
-aren't referenced).
+is executed.  The right-hand-side variables (`L` and `N`) will be destructed 
+after the code is executed. For comparison, Lemon zero-initializes the left-hand 
+side memory and  will only call the %destructor on the right-hand side for tokens
+that aren't referenced.
 
 
 ###lemon
@@ -61,3 +61,18 @@ aren't referenced).
 
 Ok, the lemon-- example isn't much of an improvement here.  But it might
 be an improvement for more complicated scenarios!
+
+## Exceptions
+
+Don't do that.  
+
+    one(RHS) ::= two(A). {
+        RHS = std::move(A);
+        throw std::exception("oops");
+    }
+
+In the above code, `RHS`'s destructor will not be called and it will leak.  
+`A` will remain on the parse stack in a valid but unspecified state.  Thus
+trying to continue parsing may or may not work (additionally, there may be
+other parser internals that are out of sync.)  The destructor leak is fixable
+but due to the other reasons, you'd be better off remaining unexceptional.

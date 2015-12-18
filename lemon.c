@@ -4230,34 +4230,52 @@ void ReportTable(
 
 #ifdef LEMONPLUSPLUS
 
+
+  /* generate non-terminal destructors.   */
+
+  // mark which ones have been processed.
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    sp->destructor = "";
+  }
+
+  // error symbol, if needed
+  if (lemp->errsym->useCnt) {
+    struct symbol *sp = lemp->errsym;
+    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      break;\n"); lineno++;
+  }
+  lemp->errsym->destructor = 0;
+
   /* generate terminal destructors */
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
-    if (sp->type!=TERMINAL ) continue;
-    fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+    if (!sp->destructor) continue;
+    if (sp->type==TERMINAL || !sp->datatype) {
+      fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+      sp->destructor = 0;
+    }
   }
   fprintf(out,"      yy_destructor<%sParseTOKENTYPE>(std::addressof(yypminor->yy0));\n",
     lemp->name ? lemp->name : ""); lineno++;
   fprintf(out,"      break;\n"); lineno++;
 
-  /* generate non-terminal destructors.   */
+
 
   for(i=0; i<lemp->nsymbol; i++){
     int j;
     struct symbol *sp = lemp->symbols[i];
-    if (sp->type == TERMINAL || !sp->datatype) continue;
+
     if (!sp->destructor) continue; /* already output */
 
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
 
     for (j = i + 1; j < lemp->nsymbol; ++j) {
-
       struct symbol *sp2 = lemp->symbols[j];
-      if (sp2->type == TERMINAL || !sp2->datatype || !sp2->destructor) continue;
-      if (sp2->datatype == sp->datatype && sp2->dtnum == sp->dtnum) {
-
+      if (sp2->destructor && sp2->dtnum == sp->dtnum && !strcmp(sp2->datatype, sp->datatype)) {
         fprintf(out,"    case %d: /* %s */\n", sp2->index, sp2->name); lineno++;
-        sp2->destructor = "";
+        sp2->destructor = 0;
       }
     }
 
@@ -4332,19 +4350,50 @@ void ReportTable(
   // generate move commands.
   // yyDest is constructed.  yySource is destructed.
   // generate terminals
+
+
+  // mark which ones have been processed.
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
-    if (sp->type!=TERMINAL ) continue;
+    sp->destructor = "";
+  }
+
+  // error symbol, if needed
+  if (lemp->errsym->useCnt) {
+    struct symbol *sp = lemp->errsym;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+    fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy%d), std::addressof(yySource->yy%d));\n",
+      sp->datatype, sp->dtnum, sp->dtnum); lineno++;
+    fprintf(out,"      break;\n"); lineno++;
+  }
+  lemp->errsym->destructor = 0;
+
+  for(i=0; i<lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if (!sp->destructor) continue;
+    if (sp->type==TERMINAL || !sp->datatype) {
+      fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
+      sp->destructor = 0;
+    }
   }
   fprintf(out,"      yy_move<%sParseTOKENTYPE>(std::addressof(yyDest->yy0), std::addressof(yySource->yy0));\n", lemp->name ? lemp->name : ""); lineno++;
   fprintf(out,"      break;\n"); lineno++;
 
   for(i=0; i<lemp->nsymbol; i++){
+    int j;
     struct symbol *sp = lemp->symbols[i];
-    if (sp->type == TERMINAL || !sp->datatype) continue;
+
+    if (!sp->destructor) continue;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
 
+    for (j = i + 1; j < lemp->nsymbol; ++j) {
+      struct symbol *sp2 = lemp->symbols[j];
+      if (sp2->destructor && sp2->dtnum == sp->dtnum && !strcmp(sp2->datatype, sp->datatype)) {
+        fprintf(out,"    case %d: /* %s */\n", sp2->index, sp2->name); lineno++;
+        sp2->destructor = 0;
+      }
+    }
+    
     fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy%d), std::addressof(yySource->yy%d));\n",
       sp->datatype, sp->dtnum, sp->dtnum); lineno++;
     fprintf(out,"      break;\n"); lineno++;
@@ -4843,9 +4892,6 @@ struct symbol *Symbol_new(const char *x)
     sp->assoc = UNK;
     sp->firstset = 0;
     sp->lambda = LEMON_FALSE;
-    #ifdef LEMONPLUSPLUS
-    sp->destructor = "";
-    #endif
     sp->destructor = 0;
     sp->destLineno = 0;
     sp->datatype = 0;

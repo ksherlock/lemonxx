@@ -76,3 +76,8 @@ In the above code, `RHS`'s destructor will not be called and it will leak.
 trying to continue parsing may or may not work (additionally, there may be
 other parser internals that are out of sync.)  The destructor leak is fixable
 but due to the other reasons, you'd be better off remaining unexceptional.
+
+# other versions for your consideration
+
+* http://sourceforge.net/projects/lemonxx/
+* http://sourceforge.net/projects/lemonpp/

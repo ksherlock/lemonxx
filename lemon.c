@@ -1550,6 +1550,11 @@ int main(int argc, char **argv)
   int exitcode;
   struct lemon lem;
 
+#ifdef LEMONPLUSPLUS
+  /* %define lemonplusplus */
+  handle_D_option("__lemonplusplus");
+#endif
+
   OptInit(argv,options,stderr);
   if( version ){
     #ifdef LEMONPLUSPLUS
@@ -2362,9 +2367,21 @@ to follow the previous rule.");
         }else if( strcmp(x,"code")==0 ){
           psp->declargslot = &(psp->gp->extracode);
         }else if( strcmp(x,"token_destructor")==0 ){
+        #ifdef LEMONPLUSPLUS
+          ErrorMsg(psp->filename,psp->tokenlineno,
+            "%%token_destructor is deprecated in lemon--.  Use object destructors instead.");
+          psp->state = RESYNC_AFTER_DECL_ERROR;
+        #else
           psp->declargslot = &psp->gp->tokendest;
+        #endif
         }else if( strcmp(x,"default_destructor")==0 ){
+        #ifdef LEMONPLUSPLUS
+          ErrorMsg(psp->filename,psp->tokenlineno,
+            "%%default_destructor is deprecated in lemon--.  Use object destructors instead.");
+          psp->state = RESYNC_AFTER_DECL_ERROR;
+        #else
           psp->declargslot = &psp->gp->vardest;
+        #endif
         }else if( strcmp(x,"token_prefix")==0 ){
           psp->declargslot = &psp->gp->tokenprefix;
           psp->insertLineMacro = 0;
@@ -2406,7 +2423,7 @@ to follow the previous rule.");
         }else if( strcmp(x,"destructor")==0 ){
         #ifdef LEMONPLUSPLUS
           ErrorMsg(psp->filename,psp->tokenlineno,
-            "%%destructor is deprecated in lemon--.  Use object desctructors instead.");
+            "%%destructor is deprecated in lemon--.  Use object destructors instead.");
           psp->state = RESYNC_AFTER_DECL_ERROR;
         #else
           psp->state = WAITING_FOR_DESTRUCTOR_SYMBOL;
@@ -3482,6 +3499,24 @@ PRIVATE char *append_str(const char *zText, int n, int p1, int p2){
   return z;
 }
 
+#ifdef LEMONPLUSPLUS
+
+const char *sp_datatype(struct lemon *lemp, struct symbol *sp) {
+
+  if (sp->datatype) return sp->datatype;
+  switch (sp->type) {
+    case NONTERMINAL:
+      if (lemp->vartype) return lemp->vartype;
+      // drop though.
+    case TERMINAL:
+    case MULTITERMINAL:
+      return lemp->tokentype ? lemp->tokentype : "void *";
+    default:
+      return NULL;
+  }
+}
+
+#endif
 /*
 ** zCode is a string that is the action associated with a rule.  Expand
 ** the symbols in this string so that the refer to elements of the parser
@@ -3511,7 +3546,7 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
     append_str("\nauto &", 0, 0, 0);
     append_str(rp->lhsalias, 0, 0, 0);
     append_str("=yy_constructor<", 0, 0, 0);
-    append_str(rp->lhs->datatype ? rp->lhs->datatype : "ParseTOKENTYPE", 0, 0, 0);
+    append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
     append_str(">(std::addressof(yygotominor.yy%d));\n", 0, rp->lhs->dtnum, 0);
   }
 
@@ -3529,7 +3564,7 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
       append_str("auto &", 0, 0, 0);
       append_str(rp->rhsalias[i], 0, 0, 0);
       append_str("=yy_cast<", 0, 0, 0);
-      append_str(sp->datatype ? sp->datatype : "ParseTOKENTYPE", 0, 0, 0);
+      append_str(sp_datatype(lemp, sp), 0, 0, 0);
       append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
     }
   }
@@ -3610,7 +3645,7 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
     else {
       // also generate destructors if NOT referenced!
       append_str("yy_destructor<", 0, 0, 0);
-      append_str(sp->datatype ? sp->datatype : "ParseTOKENTYPE", 0, 0, 0);
+      append_str(sp_datatype(lemp, sp), 0, 0, 0);
       append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
     }
     #endif
@@ -3899,6 +3934,8 @@ void ReportTable(
   int mnTknOfst, mxTknOfst;
   int mnNtOfst, mxNtOfst;
   struct axset *ax;
+
+
 
   in = tplt_open(lemp);
   if( in==0 ) return;
@@ -4231,19 +4268,46 @@ void ReportTable(
 #ifdef LEMONPLUSPLUS
 
 
+#ifdef LEMONPLUSPLUS
+  /* set the %token_type and %default_type if not set */
+  if (!lemp->tokentype) {
+    lemp->tokentype = "void *";
+  }
+  if (!lemp->vartype) {
+    lemp->vartype = lemp->tokentype;
+  }
+#endif
+
+
+
   /* generate non-terminal destructors.   */
 
   // mark which ones have been processed.
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
+    //if (sp->type == MULTITERMINAL) continue;
+
     sp->destructor = "";
+    #if 0
+    if (sp->datatype == 0) {
+      switch(sp->type) {
+        case NONTERMINAL:
+          sp->datatype = lemp->vartype;
+          break;
+        case TERMINAL:
+        case MULTITERMINAL:
+          sp->datatype = lemp->tokentype;
+          break;
+      }
+    }
+    #endif
   }
 
   // error symbol, if needed
   if (lemp->errsym->useCnt) {
     struct symbol *sp = lemp->errsym;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
-    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp_datatype(lemp, sp), sp->dtnum); lineno++;
     fprintf(out,"      break;\n"); lineno++;
   }
   lemp->errsym->destructor = 0;
@@ -4252,13 +4316,13 @@ void ReportTable(
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
     if (!sp->destructor) continue;
-    if (sp->type==TERMINAL || !sp->datatype) {
+    if (sp->type==TERMINAL || !sp->dtnum) {
       fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
       sp->destructor = 0;
     }
   }
-  fprintf(out,"      yy_destructor<%sParseTOKENTYPE>(std::addressof(yypminor->yy0));\n",
-    lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy0));\n",
+    lemp->tokentype); lineno++;
   fprintf(out,"      break;\n"); lineno++;
 
 
@@ -4273,13 +4337,14 @@ void ReportTable(
 
     for (j = i + 1; j < lemp->nsymbol; ++j) {
       struct symbol *sp2 = lemp->symbols[j];
-      if (sp2->destructor && sp2->dtnum == sp->dtnum && !strcmp(sp2->datatype, sp->datatype)) {
+
+      if (sp2->destructor && sp2->dtnum == sp->dtnum) {
         fprintf(out,"    case %d: /* %s */\n", sp2->index, sp2->name); lineno++;
         sp2->destructor = 0;
       }
     }
 
-    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp->datatype, sp->dtnum); lineno++;
+    fprintf(out,"      yy_destructor<%s>(std::addressof(yypminor->yy%d));\n", sp_datatype(lemp, sp), sp->dtnum); lineno++;
     fprintf(out,"      break;\n"); lineno++;
   }
 
@@ -4355,6 +4420,7 @@ void ReportTable(
   // mark which ones have been processed.
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
+    //if (sp->type == MULTITERMINAL) continue;
     sp->destructor = "";
   }
 
@@ -4363,7 +4429,7 @@ void ReportTable(
     struct symbol *sp = lemp->errsym;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
     fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy%d), std::addressof(yySource->yy%d));\n",
-      sp->datatype, sp->dtnum, sp->dtnum); lineno++;
+      sp_datatype(lemp, sp), sp->dtnum, sp->dtnum); lineno++;
     fprintf(out,"      break;\n"); lineno++;
   }
   lemp->errsym->destructor = 0;
@@ -4371,12 +4437,12 @@ void ReportTable(
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
     if (!sp->destructor) continue;
-    if (sp->type==TERMINAL || !sp->datatype) {
+    if (sp->type==TERMINAL || !sp->dtnum) {
       fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
       sp->destructor = 0;
     }
   }
-  fprintf(out,"      yy_move<%sParseTOKENTYPE>(std::addressof(yyDest->yy0), std::addressof(yySource->yy0));\n", lemp->name ? lemp->name : ""); lineno++;
+  fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy0), std::addressof(yySource->yy0));\n", lemp->tokentype); lineno++;
   fprintf(out,"      break;\n"); lineno++;
 
   for(i=0; i<lemp->nsymbol; i++){
@@ -4388,14 +4454,14 @@ void ReportTable(
 
     for (j = i + 1; j < lemp->nsymbol; ++j) {
       struct symbol *sp2 = lemp->symbols[j];
-      if (sp2->destructor && sp2->dtnum == sp->dtnum && !strcmp(sp2->datatype, sp->datatype)) {
+      if (sp2->destructor && sp2->dtnum == sp->dtnum) {
         fprintf(out,"    case %d: /* %s */\n", sp2->index, sp2->name); lineno++;
         sp2->destructor = 0;
       }
     }
-    
+
     fprintf(out,"      yy_move<%s>(std::addressof(yyDest->yy%d), std::addressof(yySource->yy%d));\n",
-      sp->datatype, sp->dtnum, sp->dtnum); lineno++;
+      sp_datatype(lemp, sp), sp->dtnum, sp->dtnum); lineno++;
     fprintf(out,"      break;\n"); lineno++;
   }
 

@@ -835,7 +835,8 @@ static void yy_syntax_error(
   YYMINORTYPE yyminor            /* The minor type of the error token */
 ){
   ParseARG_FETCH;
-#define TOKEN (yyminor.yy0)
+//#define TOKEN (yyminor.yy0)
+  auto &TOKEN = yy_cast<ParseTOKENTYPE>(std::addressof(yyminor.yy0));
 /************ Begin %syntax_error code ****************************************/
 %%
 /************ End %syntax_error code ******************************************/

@@ -1,16 +1,37 @@
 CXX = clang++
 CXXFLAGS = -g -std=c++14
 
-all : any expr
+TARGETS = any expr intbasic
 
-any : any.cpp 
-expr: expr.cpp
+#.SUFFIXES:
+
+# prevent intermediate files from being deleted.
+.SECONDARY:
+
+
+all : $(TARGETS)
 
 clean :
-	$(RM) any any.cpp any.h expr expr.cpp expr.h
+	$(RM) -- $(TARGETS) $(TARGETS:=.cpp) $(TARGETS:=.h) $(TARGETS:=.out) intbasic_lexer.cpp
+
+
+intbasic : intbasic.cpp intbasic_lexer.cpp
+intbasic_lexer.cpp : intbasic_lexer.ragel intbasic.cpp
+
+% : %.o
+	$(CXX) $^ -o $@
+	$(RM) -- $^
+
+#%.o : %.cpp
+#	$(CXX) $(CXXFLAGS) $< -o $@
 
 any.cpp : any.lemon
 	../lemon++ nconflicts=2 $<
 
+
 %.cpp : %.lemon
 	../lemon++ $(LEMONFLAGS) $<
+
+
+%.cpp : %.ragel
+	ragel -p -T1 $< -o $@

@@ -1,0 +1,215 @@
+/* integer basic */
+/* http://www.applefritter.com/files/basicman.pdf */
+
+%include{#include <cstdio>}
+%include{#include <stdlib.h>}
+%include{#include "intbasic_token.h"}
+
+%token_prefix tk
+%token_type {token &&}
+
+
+%syntax_error {
+	fprintf(stderr, "Syntax Error\n");
+	fprintf(stderr, "Major: %s (%d)\n", yyTokenName[yymajor], yymajor);
+	fprintf(stderr, "Token: %d : %s\n", TOKEN.intValue, TOKEN.stringValue.c_str());
+}
+
+%parse_failure {
+	fprintf(stderr, "Parse Failure\n");
+}
+
+%parse_accept {
+	fprintf(stdout, "Parse Accept\n");
+}
+
+%left EXP.
+%left MULT DIV MOD.
+%left PLUS MINUS.
+%left LT GT LE GE EQ NE.
+%left AND OR.
+
+// not a real token but I find it more pleasant
+%right RIGHT.
+
+%nonassoc ERROR.
+%wildcard ANY.
+
+program ::= lines EOF.
+program ::= EOF.
+
+lines ::= lines line.
+lines ::= line.
+
+line ::= INTEGER stmt_list EOL .
+line ::= INTEGER EOL .
+line ::= EOL .
+
+stmt_list ::= stmt.
+stmt_list ::= stmt_list COLON stmt.
+
+// LET LET=5 LET X=5
+// PRINT=4 -- error.  LET PRINT=4 -- ok.
+
+/*
+ * %fallback works with LET x EQ expr.
+ * it does not work with LET EQ expr,
+ * so we need extra rules for keywords as variables.
+ *
+ * IF(1<2)=1 
+ * is legal but conflicts with
+ * IF(1<2)THEN... 
+ */
+
+//%fallback ID LET .
+//%token_class maybe_var LET|TAB.
+
+stmt ::= LET var EQ expr.
+stmt ::= var EQ expr.
+//stmt ::= maybe_var  EQ expr.
+
+//maybe_var ::= IF opt_subscript.
+//maybe_var ::= THEN opt_subscript.
+//maybe_var ::= LET opt_subscript.
+
+//opt_subscript ::= .
+//opt_subscript ::= LPAREN expr RPAREN.
+
+stmt ::= IF expr THEN stmt.
+stmt ::= IF expr THEN INTEGER.
+
+%ifdef on_goto
+stmt ::= ON expr GOTO integer_list.
+stmt ::= ON expr GOSUB integer_list.
+%endif
+
+stmt ::= FOR ID EQ expr TO expr.
+stmt ::= FOR ID EQ expr TO expr STEP integer.
+
+stmt ::= END.
+stmt ::= RETURN.
+stmt ::= GOTO expr.
+stmt ::= GOSUB expr.
+stmt ::= POP.
+stmt ::= NEXT id_list.
+stmt ::= PRINT print_args.
+
+stmt ::= REM rem_args.
+
+
+stmt ::= TAB expr.
+stmt ::= VTAB expr.
+stmt ::= DIM dim_list.
+stmt ::= CALL expr.
+stmt ::= POKE expr COMMA expr.
+
+/* text/graphics stuff */
+
+stmt ::= TEXT.
+stmt ::= GR.
+stmt ::= HLIN expr COMMA expr AT expr.
+stmt ::= VLIN expr COMMA expr AT expr.
+stmt ::= PLOT expr COMMA expr.
+
+stmt ::= INPUT STRING COMMA var_list.
+stmt ::= INPUT var_list.
+
+/*
+ * leading COMMA/SEMI is not allowed, but multiple sep
+ * or trailing are ok.
+ */
+
+%token_class comma_semi COMMA|SEMI.
+
+print_args ::= .
+print_args ::= print_args_list opt_sep_list.
+
+print_args_list ::= expr .
+print_args_list ::= print_args_list sep_list expr.
+
+opt_sep_list ::= .
+opt_sep_list ::= sep_list.
+
+sep_list ::= comma_semi .
+sep_list ::= sep_list comma_semi .
+
+rem_args ::= .
+rem_args ::= any_list .
+
+any_list ::= ANY .
+any_list ::= any_list ANY .
+
+
+
+%ifdef on_goto
+integer_list ::= INTEGER.
+integer_list ::= integer_list COMMA INTEGER.
+%endif
+
+integer ::= INTEGER.
+integer ::= MINUS INTEGER.
+integer ::= PLUS INTEGER.
+
+expr ::= unary.
+expr ::= expr AND expr.
+expr ::= expr OR expr.
+
+expr ::= expr LT expr.
+expr ::= expr GT expr.
+expr ::= expr LE expr.
+expr ::= expr GE expr.
+expr ::= expr EQ expr.
+expr ::= expr NE expr.
+
+expr ::= expr PLUS expr.
+expr ::= expr MINUS expr.
+
+expr ::= expr MULT expr.
+expr ::= expr DIV expr.
+expr ::= expr MOD expr.
+
+expr ::= expr EXP expr.
+
+unary ::= term.
+unary ::= MINUS unary. [RIGHT]
+unary ::= PLUS unary. [RIGHT]
+unary ::= NOT unary. [RIGHT]
+
+term ::= var.
+term ::= INTEGER.
+term ::= STRING.
+term ::= LPAREN expr RPAREN.
+
+// functions
+term ::= unary_function LPAREN expr RPAREN.
+term ::= binary_function LPAREN expr COMMA expr RPAREN.
+
+unary_function ::= ABS.
+unary_function ::= LEN.
+unary_function ::= SGN.
+unary_function ::= PDL.
+unary_function ::= RND.
+unary_function ::= PEEK.
+binary_function ::= SCRN.
+
+id_list ::= ID.
+id_list ::= id_list COMMA ID.
+
+var_list ::= var.
+var_list ::= var_list COMMA var.
+
+dim_list ::= var_sub.
+dim_list ::= dim_list COMMA var_sub.
+
+/*
+ * id or id(...) id$(1,2) is ok, id(1,2) is not.
+ */
+var ::= ID.
+var ::= STRING_ID.
+var ::= var_sub.
+
+
+var_sub ::= ID LPAREN expr RPAREN.
+var_sub ::= STRING_ID LPAREN expr RPAREN.
+var_sub ::= STRING_ID LPAREN expr COMMA expr RPAREN.
+

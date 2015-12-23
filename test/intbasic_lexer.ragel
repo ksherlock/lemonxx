@@ -1,0 +1,226 @@
+%%{
+	machine intbasic;
+
+	comment := |*
+		[\r\n] => { fhold; fgoto main; };
+		any ;
+		*|;
+
+	main := |*
+
+		':'  => { Parse(pp, tkCOLON,  0); t = 0; };
+
+		'<>' => { Parse(pp, tkNE,     0); t++; };
+		'#'  => { Parse(pp, tkNE,     0); t++; };
+		'='  => { Parse(pp, tkEQ,     0); t++; };
+		'>'  => { Parse(pp, tkGT,     0); t++; };
+		'<'  => { Parse(pp, tkLT,     0); t++; };
+		'>=' => { Parse(pp, tkGE,     0); t++; };
+		'<=' => { Parse(pp, tkLE,     0); t++; };
+		'('  => { Parse(pp, tkLPAREN, 0); t++; };
+		')'  => { Parse(pp, tkRPAREN, 0); t++; };
+		'-'  => { Parse(pp, tkMINUS,  0); t++; };
+		'+'  => { Parse(pp, tkPLUS,   0); t++; };
+		'*'  => { Parse(pp, tkMULT,   0); t++; };
+		'/'  => { Parse(pp, tkDIV,    0); t++; };
+		'^'  => { Parse(pp, tkEXP,    0); t++; };
+		','  => { Parse(pp, tkCOMMA,  0); t++; };
+		';'  => { Parse(pp, tkSEMI,   0); t++; };
+
+		# reserved words.  also pass text in case it's actually an ID.
+
+		#
+		# These are not actually reserved words, so they depend on context
+		# and can't be 100% faithfully parsed by a two-part lexer/parser.
+		#
+		# Example:
+		# 10 letprintx=5 :printx 
+		# is tokenized as 
+		# 10 let printx = 5 : print x
+		#
+		# even more fun is rem -- when used as a statement, the rest of the 
+		# line is ignored... but it could also be a variable.
+
+
+		# operators
+		/NOT/i =>  { Parse(pp, tkNOT, std::string(ts, te)); t++; };
+		/AND/i =>  { Parse(pp, tkAND, std::string(ts, te)); t++; };
+		/OR/i =>   { Parse(pp, tkOR,  std::string(ts, te)); t++; };
+		/MOD/i =>  { Parse(pp, tkMOD, std::string(ts, te)); t++; };
+
+		# keywords
+		/LET/i =>     { Parse(pp, tkLET,    std::string(ts, te)); t++; };
+		/INPUT/i =>   { Parse(pp, tkINPUT,  std::string(ts, te)); t++; };
+		/PRINT/i =>   { Parse(pp, tkPRINT,  std::string(ts, te)); t++; };
+		/TAB/i =>     { Parse(pp, tkTAB,    std::string(ts, te)); t++; };
+		/VTAB/i =>    { Parse(pp, tkVTAB,   std::string(ts, te)); t++; };
+		/FOR/i =>     { Parse(pp, tkFOR,    std::string(ts, te)); t++; };
+		/TO/i =>      { Parse(pp, tkTO,     std::string(ts, te)); t++; };
+		/STEP/i =>    { Parse(pp, tkSTEP,   std::string(ts, te)); t++; };
+		/NEXT/i =>    { Parse(pp, tkNEXT,   std::string(ts, te)); t++; };
+		/IF/i =>      { Parse(pp, tkIF,     std::string(ts, te)); t++; };
+		/THEN/i =>    { Parse(pp, tkTHEN,   std::string(ts, te)); t++; };
+		/GOTO/i =>    { Parse(pp, tkGOTO,   std::string(ts, te)); t++; };
+		/GOSUB/i =>   { Parse(pp, tkGOSUB,  std::string(ts, te)); t++; };
+		/RETURN/i =>  { Parse(pp, tkRETURN, std::string(ts, te)); t++; };
+		/DIM/i =>     { Parse(pp, tkDIM,    std::string(ts, te)); t++; };
+		/END/i =>     { Parse(pp, tkEND,    std::string(ts, te)); t++; };
+		/POKE/i =>    { Parse(pp, tkPOKE,   std::string(ts, te)); t++; };
+		/CALL/i =>    { Parse(pp, tkCALL,   std::string(ts, te)); t++; };
+		/TEXT/i =>    { Parse(pp, tkTEXT,   std::string(ts, te)); t++; };
+		/AT/i =>      { Parse(pp, tkAT,     std::string(ts, te)); t++; };
+		/GR/i =>      { Parse(pp, tkGR,     std::string(ts, te)); t++; };
+		/HLIN/i =>    { Parse(pp, tkHLIN,   std::string(ts, te)); t++; };
+		/VLIN/i =>    { Parse(pp, tkVLIN,   std::string(ts, te)); t++; };
+		/PLOT/i =>    { Parse(pp, tkPLOT,   std::string(ts, te)); t++; };
+
+
+		/REM/i =>     {
+			Parse(pp, tkREM,    std::string(ts, te)); 
+			t++; 
+			fgoto comment;
+		};
+
+		# functions
+		/ABS/i =>   { Parse(pp, tkABS,   std::string(ts, te)); t++; };
+		/SGN/i =>   { Parse(pp, tkSGN,   std::string(ts, te)); t++; };
+		/PEEK/i =>  { Parse(pp, tkPEEK,  std::string(ts, te)); t++; };
+		/RND/i =>   { Parse(pp, tkRND,   std::string(ts, te)); t++; };
+		/LEN/i =>   { Parse(pp, tkLEN,   std::string(ts, te)); t++; };
+		/SCRN/i =>  { Parse(pp, tkSCRN,  std::string(ts, te)); t++; };
+
+		# strings.
+		["] [^"\r\n]* ["] => {
+			Parse(pp, tkSTRING, std::string(ts + 1, te - 1));
+			t++;
+		};
+
+
+		# variables
+
+		[A-Za-z][A-Za-z0-9]* '$' {
+			Parse(pp, tkSTRING_ID, std::string(ts, te));
+			t++;
+		};
+
+
+		[A-Za-z][A-Za-z0-9]* {
+			Parse(pp, tkID, std::string(ts, te));
+			t++;
+		};
+
+		[0-9]+ {
+			unsigned value = std::accumulate(ts, te, 0, [](int x, char c){
+				return x * 10 + c - '0';
+			});
+			Parse(pp, tkINTEGER, value);
+			t++;
+		};	
+
+
+		# skip ws.
+		[ \t]+ ;
+
+		[\r\n] => { Parse(pp, tkEOL, 0); line++; t = 0; };
+
+		# may be part of a REM statement.
+		#[^\r\n] => { Parse(pp, tkERROR, std::string(ts, te)); };
+
+	*|;
+}%%
+
+#include <string>
+#include <stdlib.h>
+#include <numeric>
+
+#include "intbasic_token.h"
+#include "intbasic.h"
+
+void Parse(void *p, int type) {
+	Parse(p, type, token(0))	;
+}
+
+void Parse(void *p, int type, int value) {
+	Parse(p, type, token(value));
+}
+
+void Parse(void *p, int type, std::string &&s) {
+	Parse(p, type, token(std::move(s)));
+}
+
+void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
+
+int main(int argc, char **argv) {
+	
+	int line = 1;
+	%%write data;
+
+	void *pp = ParseAlloc(malloc);
+	if (argc == 2 && argv[1] == std::string("-g"))
+		ParseTrace(stderr, (char *)"-->");
+
+
+
+	char buffer[2048];
+
+
+	char *ts = buffer;
+	char *te = buffer;
+	char *eof = nullptr;
+	int offset = 0;
+	int act;
+	int cs;
+
+	%%write init;
+
+	int t = 0;
+	for(;;) {
+		ssize_t size;
+
+		int space = sizeof(buffer) - offset;
+		if (!space) {
+			fprintf(stderr, "Lexer error: Token too big\n");
+			break;
+		}
+
+		size = read(0, buffer + offset, space);
+		if (size <0) {
+			perror("read");
+			break;
+		}
+
+		char *p = buffer + offset;
+		char *pe = buffer + offset + size;
+
+		if (size == 0) {
+			// eof.
+			// make sure there's an eol.
+			*pe++ = '\n';
+			eof = pe;
+		}
+
+
+		%%write exec;
+
+		if (cs == intbasic_error) {
+			fprintf(stderr, "Lexer error on line %d\n", line);
+		}
+		if (size == 0) break; // eof.
+
+		if (ts == 0) {
+			offset = 0;
+		} else {
+			// shift around an in-progress token.
+			offset = pe - ts;
+			memmove(buffer, ts, offset);
+			te = buffer + (te-ts);
+            ts = buffer;
+		}
+
+	}
+
+	Parse(pp, tkEOF, 0);
+	Parse(pp, 0, 0);
+	ParseFree(pp, free);
+	return 0;
+}

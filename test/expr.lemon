@@ -67,9 +67,13 @@
 	}
 
 #define YYMALLOCARGTYPE size_t
-void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
-void ParseFree(void *p, void (*freeProc)(void*));
-void Parse(void *yyp,int yymajor, int yyminor);
+}
+
+%code {
+
+	//void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
+	//void ParseFree(void *p, void (*freeProc)(void*));
+	//void Parse(void *yyp,int yymajor, int yyminor);
 
 	int main(int argc, char **argv) {
 
@@ -122,9 +126,11 @@ void Parse(void *yyp,int yymajor, int yyminor);
 %token_type {int}
 %type number {int}
 
-%type term {node_ptr}
-%type expr {node_ptr}
-%type unary {node_ptr}
+//%type term {node_ptr}
+//%type expr {node_ptr}
+//%type unary {node_ptr}
+
+%default_type {node_ptr}
 
 program ::= expr(E). {
 	

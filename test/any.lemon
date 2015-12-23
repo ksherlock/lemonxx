@@ -44,12 +44,14 @@ struct token {
 	int intValue = 0;
 };
 
+}
+%code {
 
-void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
-void ParseFree(void *p, void (*freeProc)(void*));
+//void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE));
+//void ParseFree(void *p, void (*freeProc)(void*));
 
 // could also use "token &" or "const token &" (needs copy constructor enabled)
-void Parse(void *yyp,int yymajor, token &&yyminor);
+//void Parse(void *yyp,int yymajor, token &&yyminor);
 
 int main(int argc, char ** argv) {
 	void *p;

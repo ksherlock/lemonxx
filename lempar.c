@@ -320,6 +320,7 @@ void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE)){
   yyParser *pParser;
   pParser = (yyParser*)(*mallocProc)( (YYMALLOCARGTYPE)sizeof(yyParser) );
   if( pParser ){
+    memset(pParser, 0, sizeof(yyParser));
     pParser->yyidx = -1;
 #ifdef YYTRACKMAXSTACKDEPTH
     pParser->yyidxMax = 0;

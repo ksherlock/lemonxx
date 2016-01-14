@@ -1,5 +1,6 @@
 #ifndef __lemon_base_h__
 #define __lemon_base_h__
+#include <cstdio>
 
 template<class TokenType>
 class lemon_base {
@@ -15,6 +16,7 @@ public:
 
 	//virtual typename std::enable_if<std::is_move_constructible<TokenType>::value, void>::type 
 	virtual void parse(int yymajor, TokenType &&yyminor) = 0;
+    virtual void trace(FILE *, const char *) = 0;
 
 protected:
 	virtual void parse_accept() {}

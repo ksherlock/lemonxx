@@ -316,6 +316,8 @@ class yypParser : public LEMON_SUPER {
 
     virtual ~yypParser() override final;
     virtual void parse(int, ParseTOKENTYPE &&) override final;
+
+    virtual void trace(FILE *, const char *) final override;
   protected:
   private:
   bool init = false;
@@ -360,7 +362,7 @@ class yypParser : public LEMON_SUPER {
 #ifndef NDEBUG
 
 FILE *yyTraceFILE = 0;
-char *yyTracePrompt = 0;
+const char *yyTracePrompt = 0;
 #endif /* NDEBUG */
 
 #ifndef NDEBUG
@@ -381,7 +383,7 @@ char *yyTracePrompt = 0;
 ** Outputs:
 ** None.
 */
-void /*yypParser::*/ParseTrace(FILE *TraceFILE, char *zTracePrompt){
+void yypParser::trace(FILE *TraceFILE, const char *zTracePrompt){
   yyTraceFILE = TraceFILE;
   yyTracePrompt = zTracePrompt;
   if( yyTraceFILE==0 ) yyTracePrompt = 0;

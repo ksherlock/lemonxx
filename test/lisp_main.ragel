@@ -1,0 +1,118 @@
+#include "lisp_main.h"
+#include "lisp.h"
+#include <string>
+
+%%{
+
+	machine lexer;
+	alphtype unsigned char;
+
+	main := |*
+
+		'\n' { if (depth <= 0) { pp->parse(0); depth = 0; } };
+		[ \t]+ ;
+
+		'[' => { depth++; pp->parse(LBRACKET); };
+		']' => { depth--; pp->parse(RBRACKET); };
+		'(' => { depth++; pp->parse(LPAREN); };
+		')' => { depth--; pp->parse(RPAREN); };
+		'-' => { pp->parse(MINUS); };
+		'+' => { pp->parse(PLUS); };
+		'->' => {pp->parse(ARROW); };
+		':' => {pp->parse(COLON); };
+		';' => {pp->parse(SEMI); };
+		'.' => {pp->parse(DOT); };
+		',' => {pp->parse(COMMA); };
+		'=' => {pp->parse(EQ); };
+		'<>' => {pp->parse(NE); };
+		'<' => {pp->parse(LT); };
+		'>' => {pp->parse(GT); };
+		'<=' => {pp->parse(LE); };
+		'>=' => {pp->parse(GE); };
+
+		[0-9]+ => {pp->parse(INTEGER); };
+		[A-Z][A-Za-z0-9_]* => { pp->parse(ATOM); };
+		[a-z][a-z0-9_]* => { pp->parse(SYMBOL); };
+
+# ¬
+# NOT SIGN
+# Unicode: U+00AC, UTF-8: C2 AC
+		0xc2 0xac => { pp->parse(NOT); };
+
+# λ
+# GREEK SMALL LETTER LAMDA
+# Unicode: U+03BB, UTF-8: CE BB
+		0xce 0xbb => { pp->parse(LAMBDA); };
+#		',\\' => {pp->parse(LAMBDA); };
+
+# ∨
+# LOGICAL OR
+# Unicode: U+2228, UTF-8: E2 88 A8
+		0xe2 0x88 0xa8 => { pp->parse(OR); };
+
+# ∧
+# LOGICAL AND
+# Unicode: U+2227, UTF-8: E2 88 A7
+		0xe2 0x88 0xa7 => { pp->parse(AND); };
+
+# ⊻
+# XOR
+# Unicode: U+22BB, UTF-8: E2 8A BB
+		0xe2 0x8a 0xbb => { pp->parse(XOR); };
+
+# →
+# RIGHTWARDS ARROW
+# Unicode: U+2192, UTF-8: E2 86 92
+		0xe2 0x86 0x92 => { pp->parse(ARROW); };
+
+	*|;	
+
+
+}%%
+
+
+%%write data;
+
+int main(int argc, char **argv) {
+
+
+	auto pp = mexpr_parser::create();
+	int depth = 0; // quick and dirty way to check if () or [] extends across lines.
+
+	if (argc == 2 && std::string("-g") == argv[1]) pp->trace(stderr, "-> ");
+
+	int cs, act;
+	unsigned char *ts;
+	unsigned char *te;
+	%%write init;
+
+	for(;;) {
+		unsigned char *p;
+		unsigned char *pe;
+		unsigned char *eof;
+
+		size_t length;
+
+		/*
+		 there isn't any need to copy buffers around between lines
+		 since the line ends with a newline or eof will be set.
+		 */
+
+		p = (unsigned char *)fgetln(stdin, &length);
+		if (!p || !length) break;
+
+		pe = p + length;
+		eof = nullptr;
+		if (p[length-1] != '\n') eof = pe;
+
+		%%write exec;
+		if (cs == lexer_error) {
+			printf("Lexer error\n");
+			break;
+		}
+		if (eof) break;
+	}
+	pp->parse(0);
+
+	return 0;
+}

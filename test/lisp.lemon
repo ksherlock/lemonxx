@@ -1,0 +1,114 @@
+
+/*
+ *
+ * LISP, as John McCarthy intended it.  Before the parenthesis took over.
+ * (IE - M-Expressions)
+ *
+ * To prevent ambiguity, assignment uses : instead of =. 
+ */
+
+%include{
+#include <memory>
+#include "lisp_main.h"
+
+#define LEMON_SUPER mexpr_parser
+
+}
+
+%code{
+	std::unique_ptr<mexpr_parser> mexpr_parser::create() {
+		return std::make_unique<yypParser>();
+	}
+
+
+}
+
+%token_type    {Token}
+
+%left AND OR XOR.
+%left EQ NE LT GT LE GE.
+%left PLUS MINUS.
+%right NOT.
+
+program ::= .
+program ::= statement_list.
+
+statement_list ::= statement.
+
+/*
+statement_list ::= statement_list statement.
+*/
+
+statement ::= variable_assignment.
+statement ::= function_assignment.
+statement ::= expression.
+
+
+variable_assignment ::= SYMBOL COLON expression.
+function_assignment ::= SYMBOL /* LBRACKET opt_arg_list RBRACKET */ function_call COLON expression.
+// function call vs function definition has conflicts unless they use the same argument list.
+// need to verify args are actually SYMBOLS and not arbitrary expressions later.
+
+/*
+opt_parm_list ::= .
+opt_parm_list ::= parm_list.
+
+parm_list ::= SYMBOL.
+parm_list ::= parm_list SEMI SYMBOL.
+*/
+
+term ::= INTEGER.
+term ::= ATOM.
+term ::= SYMBOL.
+term ::= lambda.
+term ::= function.
+
+/* ,\[[a;b;c]; a+b+c] */
+lambda ::= LAMBDA LBRACKET LBRACKET opt_arg_list RBRACKET SEMI expression RBRACKET.
+
+function ::= SYMBOL function_call.
+function ::= lambda function_call.
+function ::= function function_call.
+
+expression ::= term.
+expression ::= conditional.
+expression ::= list.
+
+
+expression ::= expression AND expression.
+expression ::= expression OR expression.
+expression ::= expression XOR expression.
+expression ::= expression EQ expression.
+expression ::= expression NE expression.
+expression ::= expression LT expression.
+expression ::= expression GT expression.
+expression ::= expression GE expression.
+expression ::= expression LE expression.
+expression ::= expression PLUS expression.
+expression ::= expression MINUS expression.
+expression ::= NOT expression.
+expression ::= PLUS expression. [NOT]
+expression ::= MINUS expression. [NOT]
+
+
+conditional ::= LBRACKET conditional_list RBRACKET.
+conditional_list ::= condition.
+conditional_list ::= conditional_list SEMI condition.
+condition ::= expression ARROW expression.
+
+/* lists: (), ( A . B) or (A, B, C) (A , B . C) */
+list ::= LPAREN RPAREN.
+list ::= LPAREN expression_list RPAREN.
+list ::= LPAREN expression_list DOT expression RPAREN.
+
+expression_list ::= expression .
+expression_list ::= expression_list COMMA expression .
+
+
+function_call ::=  LBRACKET opt_arg_list RBRACKET.
+
+opt_arg_list ::= .
+opt_arg_list ::= arg_list.
+arg_list ::= expression.
+arg_list ::= arg_list SEMI expression.
+

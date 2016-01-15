@@ -318,6 +318,18 @@ class yypParser : public LEMON_SUPER {
     virtual void parse(int, ParseTOKENTYPE &&) override final;
 
     virtual void trace(FILE *, const char *) final override;
+
+
+    /*
+    ** Return the peak depth of the stack for a parser.
+    */
+    #ifdef YYTRACKMAXSTACKDEPTH
+    int yypParser::stack_peak(){
+      return yyidxMax;
+    }
+    #endif
+
+
   protected:
   private:
   bool init = false;
@@ -356,14 +368,18 @@ class yypParser : public LEMON_SUPER {
 #else
 # define yyTraceShift(X)
 #endif
-};
 
 
 #ifndef NDEBUG
-
 FILE *yyTraceFILE = 0;
 const char *yyTracePrompt = 0;
 #endif /* NDEBUG */
+
+
+};
+
+
+
 
 #ifndef NDEBUG
 /* 
@@ -422,7 +438,7 @@ void yypParser::yyGrowStack(){
 
   newSize = oldSize*2 + 100;
   //pNew = realloc(yystack, newSize*sizeof(pNew[0]));
-  pNew = calloc(newSize*sizeof(pNew[0]);
+  pNew = (yyStackEntry *)calloc(newSize, sizeof(pNew[0]));
   if( pNew ){
     yystack = pNew;
     yystksz = newSize;
@@ -443,7 +459,10 @@ void yypParser::yyGrowStack(){
 #endif
 
 
-
+/*
+ * this should be in the constructor, but we inherit the parent's
+ * constructors.
+ */
 void yypParser::initialize() {
   if (!init) {
 #if YYSTACKDEPTH<=0
@@ -492,7 +511,7 @@ void yy_destructor(
  * 
  */
 void yy_move(
-  YYCODETYPE yymajor,     /* Type code for object to destroy */
+  YYCODETYPE yymajor,     /* Type code for object to move */
   YYMINORTYPE *yyDest,     /*  */
   YYMINORTYPE *yySource     /*  */
 ){
@@ -501,7 +520,7 @@ void yy_move(
 /********* Begin move definitions ***************************************/
 %%
 /********* End move &&definitions *****************************************/
-    default:  break;   /* If no destructor action specified: do nothing */
+    default:  break;   /* If no move action specified: do nothing */
       //yyDest.minor = yySource.minor;
   }
 }
@@ -542,15 +561,6 @@ yypParser::~yypParser() {
   free(yystack);
 #endif
 }
-
-/*
-** Return the peak depth of the stack for a parser.
-*/
-#ifdef YYTRACKMAXSTACKDEPTH
-int yypParser::ParseStackPeak(void *p){
-  return yyidxMax;
-}
-#endif
 
 /*
 ** Find the appropriate action for a parser given the terminal

@@ -382,7 +382,7 @@ static void yyGrowStack(yyParser *p){
 
   newSize = oldSize*2 + 100;
   //pNew = realloc(p->yystack, newSize*sizeof(pNew[0]));
-  pNew = calloc(newSize*sizeof(pNew[0]);
+  pNew = (yyStackEntry *)calloc(newSize, sizeof(pNew[0]));
   if( pNew ){
     p->yystack = pNew;
     p->yystksz = newSize;

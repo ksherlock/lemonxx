@@ -4,7 +4,9 @@
  * LISP, as John McCarthy intended it.  Before the parenthesis took over.
  * (IE - M-Expressions)
  *
- * To prevent ambiguity, assignment uses : instead of =. 
+ * http://www-formal.stanford.edu/jmc/recursive.pdf
+ *
+ * To prevent ambiguity and conflicts, assignment uses : instead of =
  */
 
 %include{
@@ -19,8 +21,6 @@
 	std::unique_ptr<mexpr_parser> mexpr_parser::create() {
 		return std::make_unique<yypParser>();
 	}
-
-
 }
 
 %token_type    {Token}
@@ -45,7 +45,7 @@ statement ::= expression.
 
 
 variable_assignment ::= SYMBOL COLON expression.
-function_assignment ::= SYMBOL /* LBRACKET opt_arg_list RBRACKET */ function_call COLON expression.
+function_assignment ::= SYMBOL function_call COLON expression.
 // function call vs function definition has conflicts unless they use the same argument list.
 // need to verify args are actually SYMBOLS and not arbitrary expressions later.
 
@@ -64,7 +64,7 @@ term ::= lambda.
 term ::= function.
 
 /* ,\[[a;b;c]; a+b+c] */
-lambda ::= LAMBDA LBRACKET LBRACKET opt_arg_list RBRACKET SEMI expression RBRACKET.
+lambda ::= LAMBDA LBRACKET function_call SEMI expression RBRACKET.
 
 function ::= SYMBOL function_call.
 function ::= lambda function_call.
@@ -104,7 +104,7 @@ list ::= LPAREN expression_list DOT expression RPAREN.
 expression_list ::= expression .
 expression_list ::= expression_list COMMA expression .
 
-
+// parameter list, for function call or function definition.
 function_call ::=  LBRACKET opt_arg_list RBRACKET.
 
 opt_arg_list ::= .

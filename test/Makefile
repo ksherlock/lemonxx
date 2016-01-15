@@ -30,7 +30,7 @@ intbasic_lexer.cpp : intbasic_lexer.ragel intbasic.cpp
 any.cpp : any.lemon
 	../lemon++ nconflicts=2 $<
 
-lisp.cpp : lisp.lemon
+lisp.cpp : lisp.lemon lempar.cxx
 	../lemon++ -Tlempar.cxx $<
 
 %.cpp : %.lemon

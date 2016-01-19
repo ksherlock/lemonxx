@@ -46,6 +46,11 @@ namespace {
     typedef typename std::remove_const<typename std::remove_reference<T>::type>::type type;
   };
 
+  template<>
+  struct yy_fix_type<void> {
+    typedef struct {} type;
+  };
+
   template<class T, class... Args>
   T &yy_constructor(void *vp, Args&&... args ) {
     typedef typename yy_fix_type<T>::type TT;

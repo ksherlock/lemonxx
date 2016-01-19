@@ -15,14 +15,17 @@ clean :
 	$(RM) -- $(TARGETS) $(TARGETS:=.cpp) $(TARGETS:=.h) $(TARGETS:=.out) \
 	intbasic_lexer.cpp lisp_main.cpp lisp_main.o
 
-lisp : lisp.o lisp_main.o
 
 intbasic : intbasic.cpp intbasic_lexer.cpp
 intbasic_lexer.cpp : intbasic_lexer.ragel intbasic.cpp
 
+lisp : lisp.o lisp_main.o lisp_cell.o
+lisp_cell.o : lisp_cell.cpp lisp_cell.h lisp.h
+lisp_main.o : lisp_main.cpp lisp_cell.h lisp.h
+
 % : %.o
-	$(CXX) $^ -o $@
-	$(RM) -- $^
+	$(CXX) $(LDFLAGS) $^ -o $@
+	#$(RM) -- $^
 
 #%.o : %.cpp
 #	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -30,7 +33,7 @@ intbasic_lexer.cpp : intbasic_lexer.ragel intbasic.cpp
 any.cpp : any.lemon
 	../lemon++ nconflicts=2 $<
 
-lisp.cpp : lisp.lemon lempar.cxx
+lisp.cpp : lisp.lemon lisp_main.h lisp_cell.h lempar.cxx
 	../lemon++ -Tlempar.cxx $<
 
 %.cpp : %.lemon

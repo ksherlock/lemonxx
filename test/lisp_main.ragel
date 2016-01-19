@@ -1,6 +1,9 @@
 #include "lisp_main.h"
 #include "lisp.h"
+#include "lisp_cell.h"
+
 #include <string>
+#include <numeric>
 
 %%{
 
@@ -18,6 +21,8 @@
 		')' => { depth--; pp->parse(RPAREN); };
 		'-' => { pp->parse(MINUS); };
 		'+' => { pp->parse(PLUS); };
+		'*' => { pp->parse(TIMES); };
+		'/' => { pp->parse(DIVIDE); };
 		'->' => {pp->parse(ARROW); };
 		':' => {pp->parse(COLON); };
 		';' => {pp->parse(SEMI); };
@@ -30,9 +35,14 @@
 		'<=' => {pp->parse(LE); };
 		'>=' => {pp->parse(GE); };
 
-		[0-9]+ => {pp->parse(INTEGER); };
-		[A-Z][A-Za-z0-9_]* => { pp->parse(ATOM); };
-		[a-z][a-z0-9_]* => { pp->parse(SYMBOL); };
+		[0-9]+ => {
+			int i = std::accumulate(ts, te, 0, [](int x, unsigned char c){
+				return x * 10 + c - '0';
+			});
+			pp->parse(INTEGER, i);
+		};
+		[A-Z][A-Za-z0-9_]* => { pp->parse(ATOM, std::string(ts, te)); };
+		[a-z][a-z0-9_]* => { pp->parse(SYMBOL, std::string(ts, te)); };
 
 # ¬
 # NOT SIGN
@@ -76,10 +86,14 @@
 int main(int argc, char **argv) {
 
 
+
 	auto pp = mexpr_parser::create();
 	int depth = 0; // quick and dirty way to check if () or [] extends across lines.
 
 	if (argc == 2 && std::string("-g") == argv[1]) pp->trace(stderr, "-> ");
+
+	lisp::initialize(10000);
+
 
 	int cs, act;
 	unsigned char *ts;

@@ -11,10 +11,15 @@
 
 %include{
 #include <memory>
+#include <numeric>
+#include <algorithm>
+#include <utility>
+
 #include "lisp_main.h"
+#include "lisp_cell.h"
 
 #define LEMON_SUPER mexpr_parser
-
+#define YYSTACKDEPTH 0
 }
 
 %code{
@@ -24,91 +29,224 @@
 }
 
 %token_type    {Token}
+%default_type {lisp::cell_ptr}
 
 %left AND OR XOR.
 %left EQ NE LT GT LE GE.
 %left PLUS MINUS.
+%left TIMES DIVIDE.
 %right NOT.
 
 program ::= .
 program ::= statement_list.
 
-statement_list ::= statement.
+%type statement_list {void}
+
+statement_list ::= statement(E). {
+	printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
+	
+}
 
 /*
 statement_list ::= statement_list statement.
 */
 
-statement ::= variable_assignment.
-statement ::= function_assignment.
-statement ::= expression.
+statement(RV) ::= variable_assignment(E). { RV = E; }
+
+statement(RV) ::= function_assignment(E). { RV = E; }
+
+statement(RV) ::= expression(E). { 
+	try {
+		auto tmp = E->substitute(lisp::env);
+		tmp = tmp->evaluate();
+		RV = tmp;
+	}
+	catch(std::exception &e) {
+		fprintf(stderr, "%s\n", e.what());
+		RV = nullptr;
+	}
+
+}
 
 
-variable_assignment ::= SYMBOL COLON expression.
-function_assignment ::= SYMBOL function_call COLON expression.
+// these should also add to the table.
+variable_assignment(RV) ::= SYMBOL(S) COLON expression(E) . {
+	try {
+		auto tmp = E->substitute(lisp::env);
+		tmp = tmp->evaluate();
+		auto label = lisp::make_symbol(S.stringValue);
+		lisp::env[label] = tmp;
+		RV = tmp;
+	}
+	catch(std::exception &e) {
+		fprintf(stderr, "%s\n", e.what());
+		RV = nullptr;
+	}
+
+}
+
 // function call vs function definition has conflicts unless they use the same argument list.
 // need to verify args are actually SYMBOLS and not arbitrary expressions later.
 
-/*
-opt_parm_list ::= .
-opt_parm_list ::= parm_list.
+function_assignment(RV) ::= SYMBOL(S) function_call(F) COLON expression(E).
+{
 
-parm_list ::= SYMBOL.
-parm_list ::= parm_list SEMI SYMBOL.
-*/
+	try {
 
-term ::= INTEGER.
-term ::= ATOM.
-term ::= SYMBOL.
-term ::= lambda.
-term ::= function.
+		std::vector<lisp::symbol_cell_ptr> parameters;
+
+		std::transform(F.begin(), F.end(), std::back_inserter(parameters),
+			[](lisp::cell_ptr cell){ return cell->to_symbol(); }
+		);
+
+		auto label = lisp::make_symbol(S.stringValue);
+		auto tmp = lisp::make_lambda(label, std::move(parameters), E);
+
+		tmp = tmp->substitute(lisp::env);
+
+		lisp::env[label] = tmp;
+		RV = tmp;
+	}
+	catch(std::exception &e) {
+		fprintf(stderr, "%s\n", e.what());
+		RV = nullptr;
+	}
+
+}
+
+
+
+
 
 /* ,\[[a;b;c]; a+b+c] */
-lambda ::= LAMBDA LBRACKET function_call SEMI expression RBRACKET.
+lambda(RV) ::= LAMBDA LBRACKET function_call(F) SEMI expression(E) RBRACKET. {
 
-function ::= SYMBOL function_call.
-function ::= lambda function_call.
-function ::= function function_call.
+	try {
 
-expression ::= term.
-expression ::= conditional.
-expression ::= list.
+		std::vector<lisp::symbol_cell_ptr> parameters;
+
+		std::transform(F.begin(), F.end(), std::back_inserter(parameters),
+			[](lisp::cell_ptr cell){ return cell->to_symbol(); }
+		);
+
+		RV = lisp::make_lambda(nullptr, std::move(parameters), E);
+	}
+	catch(std::exception &e) {
+		fprintf(stderr, "%s\n", e.what());
+		RV = nullptr;
+	}
+}
+
+function(RV) ::= SYMBOL(S) function_call(ARGS).
+{ RV = lisp::make_function(lisp::make_symbol(S.stringValue), std::move(ARGS)); }
+
+function(RV) ::= lambda(F) function_call(ARGS).
+{ RV = lisp::make_function(F, std::move(ARGS)); }
+
+function(RV) ::= function(F) function_call(ARGS).
+{ RV = lisp::make_function(F, std::move(ARGS)); }
 
 
-expression ::= expression AND expression.
-expression ::= expression OR expression.
-expression ::= expression XOR expression.
-expression ::= expression EQ expression.
-expression ::= expression NE expression.
-expression ::= expression LT expression.
-expression ::= expression GT expression.
-expression ::= expression GE expression.
-expression ::= expression LE expression.
-expression ::= expression PLUS expression.
-expression ::= expression MINUS expression.
-expression ::= NOT expression.
-expression ::= PLUS expression. [NOT]
-expression ::= MINUS expression. [NOT]
+%token_class mul_op TIMES DIVIDE.
+%token_class add_op PLUS MINUS.
+%token_class logical_op AND OR XOR.
+%token_class compare_op EQ NE LT GT GE LE.
+
+expression(RV) ::= expression(L) logical_op(OP) expression(R).
+{ RV = lisp::make_binary(@OP, L, R); }
 
 
-conditional ::= LBRACKET conditional_list RBRACKET.
-conditional_list ::= condition.
-conditional_list ::= conditional_list SEMI condition.
-condition ::= expression ARROW expression.
+expression(RV) ::= expression(L) compare_op(OP) expression(R).
+{ RV = lisp::make_binary(@OP, L, R); }
+
+expression(RV) ::= expression(L) add_op(OP) expression(R).
+{ RV = lisp::make_binary(@OP, L, R); }
+
+expression(RV) ::= expression(L) mul_op(OP) expression(R).
+{ RV = lisp::make_binary(@OP, L, R); }
+
+expression(RV) ::= NOT(OP) expression(E). 
+{ RV = lisp::make_unary(@OP, E); } 
+
+expression(RV) ::= PLUS(OP) expression(E). [NOT]
+{ RV = lisp::make_unary(@OP, E); } 
+
+expression(RV) ::= MINUS(OP) expression(E). [NOT]
+{ RV = lisp::make_unary(@OP, E); } 
+
+expression(RV) ::= term(X). { RV = X; }
+expression(RV) ::= conditional(X). { RV = X; }
+expression(RV) ::= list(X). { RV = X; }
+
+term(RV) ::= INTEGER(I). { RV = lisp::make_integer(I.intValue); }
+term(RV) ::= ATOM(A). { RV = lisp::make_atom(A.stringValue); }
+term(RV) ::= SYMBOL(S). { RV = lisp::make_symbol(S.stringValue); }
+term(RV) ::= lambda(X) . { RV = X; }
+term(RV) ::= function(X) . {RV = X; }
+
+
+
+%type conditional_list {std::vector<lisp::cell_ptr> }
+%type condition {std::vector<lisp::cell_ptr> }
+
+
+conditional(RV) ::= LBRACKET conditional_list(L) RBRACKET.
+{ RV = lisp::make_conditional(std::move(L)); }
+
+conditional_list(RV) ::= condition(C). {
+	RV = std::move(C);
+}
+
+conditional_list(RV) ::= conditional_list(L) SEMI condition(C). {
+	RV = std::move(L);
+	RV.insert(RV.end(), C.begin(), C.end());
+}
+
+condition(RV) ::= expression(P) ARROW expression(E). {
+	RV = { P, E };
+}
 
 /* lists: (), ( A . B) or (A, B, C) (A , B . C) */
-list ::= LPAREN RPAREN.
-list ::= LPAREN expression_list RPAREN.
-list ::= LPAREN expression_list DOT expression RPAREN.
 
-expression_list ::= expression .
-expression_list ::= expression_list COMMA expression .
+list(RV) ::= LPAREN RPAREN. { RV = lisp::make_pair(nullptr, nullptr); /* ?? */ }
+
+list(RV) ::= LPAREN expression_list(L) RPAREN. {
+
+	RV = std::accumulate(L.rbegin(), L.rend(), lisp::cell_ptr(nullptr), [](lisp::cell_ptr cdr, lisp::cell_ptr car){
+		return lisp::make_pair(car, cdr);
+	});
+}
+
+list(RV) ::= LPAREN expression_list(L) DOT expression(E) RPAREN. {
+
+	RV = std::accumulate(L.rbegin(), L.rend(), E, [](lisp::cell_ptr cdr, lisp::cell_ptr car){
+		return lisp::make_pair(car, cdr);
+	});
+}	
+
+%type expression_list {std::vector<lisp::cell_ptr> }
+
+expression_list(RV) ::= expression(E) .
+{ RV.push_back(E); }
+
+expression_list(RV) ::= expression_list(L) COMMA expression(E) .
+{ RV = std::move(L); RV.push_back(E); }
 
 // parameter list, for function call or function definition.
-function_call ::=  LBRACKET opt_arg_list RBRACKET.
 
-opt_arg_list ::= .
-opt_arg_list ::= arg_list.
-arg_list ::= expression.
-arg_list ::= arg_list SEMI expression.
+%type function_call {std::vector<lisp::cell_ptr> }
+%type opt_arg_list {std::vector<lisp::cell_ptr> }
+%type arg_list {std::vector<lisp::cell_ptr> }
+
+function_call(RV) ::=  LBRACKET opt_arg_list(X) RBRACKET.
+{ RV = std::move(X); }
+
+/* todo -- lemon needs the LHS to call the constructor */
+opt_arg_list(RV) ::= . { /* RV */ } 
+
+opt_arg_list(RV) ::= arg_list(X).
+{ RV = std::move(X); }
+
+arg_list(RV) ::= expression(E). { RV.push_back(E); }
+arg_list(RV) ::= arg_list(L) SEMI expression(E). { RV = std::move(L); RV.push_back(E); }
 

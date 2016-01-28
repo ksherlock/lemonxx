@@ -3643,6 +3643,7 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
 
     #ifdef LEMONPLUSPLUS
     /* generate destructors for all RHS. */
+    if (i == 0) append_str("\n", 0, 0, 0);
     if (rp->rhsalias[i]) {
       append_str("yy_destructor(", 0, 0, 0);
       append_str(rp->rhsalias[i], 0, 0, 0);

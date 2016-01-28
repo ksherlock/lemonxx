@@ -33,7 +33,7 @@ lisp_main.o : lisp_main.cpp lisp_cell.h lisp.h
 any.cpp : any.lemon
 	../lemon++ nconflicts=2 $<
 
-lisp.cpp : lisp.lemon lisp_main.h lisp_cell.h lempar.cxx
+lisp.cpp lisp.h : lisp.lemon lisp_main.h lisp_cell.h lempar.cxx
 	../lemon++ -Tlempar.cxx $<
 
 %.cpp : %.lemon

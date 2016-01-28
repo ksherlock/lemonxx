@@ -3574,6 +3574,25 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
       append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
     }
   }
+  /* also generate major tokens */
+  for(i=0; i<rp->nrhs; i++){
+    if (rp->rhsalias[i]) {
+
+      append_str("const int yymsp_%d_major", 0, i, 0);
+      append_str(" = yymsp[%d].major;", 0 ,i-rp->nrhs+1, 0);
+      append_str(" /* @", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str(" */\n", 0, 0, 0);
+    }
+  }
+
+  /* and prevent unused variable warnings... */
+  for(i=0; i<rp->nrhs; i++){
+    if (rp->rhsalias[i]) {
+      append_str("(void)yymsp_%d_major;\n", 0, i, 0);
+    }
+  }
+
 #endif
 
   /* This const cast is wrong but harmless, if we're careful. */
@@ -3595,7 +3614,11 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
             if( cp!=rp->code && cp[-1]=='@' ){
               /* If the argument is of the form @X then substituted
               ** the token number of X, not the value of X */
+              #ifdef LEMONPLUSPLUS
+              append_str("yymsp_%d_major", -1, i, 0);
+              #else
               append_str("yymsp[%d].major",-1,i-rp->nrhs+1,0);
+              #endif
               cp = xp;
               if (!used[i]) used[i] = 2;
             }else{

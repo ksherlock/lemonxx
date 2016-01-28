@@ -3574,8 +3574,8 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
       append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
     }
   }
-  /* also generate major tokens */
-  for(i=0; i<rp->nrhs; i++){
+  /* also generate major tokens  -- if @ in code.*/
+  if (strchr(rp->code, '@')) for(i=0; i<rp->nrhs; i++){
     if (rp->rhsalias[i]) {
 
       append_str("const int yymsp_%d_major", 0, i, 0);

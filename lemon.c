@@ -3549,6 +3549,12 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
     append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
     append_str(">(std::addressof(yygotominor.yy%d));\n", 0, rp->lhs->dtnum, 0);
   }
+  else {
+    // return value needs to be constructed, even if not named.
+    append_str("\nyy_constructor<", 0, 0, 0);
+    append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
+    append_str(">(std::addressof(yygotominor.yy%d));\n", 0, rp->lhs->dtnum, 0);
+  }
 
   for(i=0; i<rp->nrhs; i++){
     if (rp->rhsalias[i]) {

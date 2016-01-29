@@ -395,6 +395,7 @@ struct lemon {
   char *failure;           /* Code to execute on parser failure */
   char *accept;            /* Code to execute when the parser excepts */
   char *extracode;         /* Code appended to the generated file */
+  char *header;            /* Code appended to the generated header file */
   char *tokendest;         /* Code to execute to destroy token data */
   char *vardest;           /* Code for the default non-terminal destructor */
   char *filename;          /* Name of the input file */
@@ -2366,6 +2367,9 @@ to follow the previous rule.");
           psp->declargslot = &(psp->gp->include);
         }else if( strcmp(x,"code")==0 ){
           psp->declargslot = &(psp->gp->extracode);
+        }else if( strcmp(x,"header")==0 ){
+          psp->declargslot = &(psp->gp->header);
+          psp->insertLineMacro = 0;
         }else if( strcmp(x,"token_destructor")==0 ){
         #ifdef LEMONPLUSPLUS
           ErrorMsg(psp->filename,psp->tokenlineno,
@@ -4569,37 +4573,60 @@ void ReportTable(
   return;
 }
 
+/* Check if the existing header needs to be re-generated */
+int CompareHeader(FILE *in, struct lemon *lemp, const char *prefix) {
+  char line[LINESIZE];
+  char pattern[LINESIZE];
+  int i;
+  int nextChar;
+
+  for(i=1; i<lemp->nterminal && fgets(line,LINESIZE,in); i++){
+    lemon_sprintf(pattern,"#define %s%-30s %3d\n",
+                  prefix,lemp->symbols[i]->name,i);
+    if( strcmp(line,pattern) ) return 0;
+  }
+  if ( i != lemp->nterminal ) return 0; 
+
+  /* compare user-supplied header */
+  if (lemp->header && lemp->header[0]) {
+    int len = lemonStrlen(lemp->header);
+    char *tmp = (char *)malloc(len);
+    if (!tmp) return 0;
+    if (fread(tmp, 1, len, in) != len) { free(tmp); return 0; }
+    if (memcmp(lemp->header, tmp, len)) { free(tmp); return 0; }
+    free(tmp);
+  }
+
+  if ( fgetc(in) != EOF) return 0;
+  /* No change in the file.  Don't rewrite it. */
+  return 1; 
+}
+
 /* Generate a header file for the parser */
 void ReportHeader(struct lemon *lemp)
 {
   FILE *out, *in;
   const char *prefix;
-  char line[LINESIZE];
-  char pattern[LINESIZE];
+
   int i;
+  int ok;
 
   if( lemp->tokenprefix ) prefix = lemp->tokenprefix;
   else                    prefix = "";
+
   in = file_open(lemp,".h","rb");
-  if( in ){
-    int nextChar;
-    for(i=1; i<lemp->nterminal && fgets(line,LINESIZE,in); i++){
-      lemon_sprintf(pattern,"#define %s%-30s %3d\n",
-                    prefix,lemp->symbols[i]->name,i);
-      if( strcmp(line,pattern) ) break;
-    }
-    nextChar = fgetc(in);
+  if ( in ) {
+    ok = CompareHeader(in, lemp, prefix);
     fclose(in);
-    if( i==lemp->nterminal && nextChar==EOF ){
-      /* No change in the file.  Don't rewrite it. */
-      return;
-    }
+    if (ok) return;
   }
+
   out = file_open(lemp,".h","wb");
   if( out ){
     for(i=1; i<lemp->nterminal; i++){
       fprintf(out,"#define %s%-30s %3d\n",prefix,lemp->symbols[i]->name,i);
     }
+    if (lemp->header) fputs(lemp->header, out);
     fclose(out);  
   }
   return;

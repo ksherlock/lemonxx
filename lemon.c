@@ -3588,12 +3588,12 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
       append_str(rp->rhsalias[i], 0, 0, 0);
       append_str(" */\n", 0, 0, 0);
     }
-  }
 
-  /* and prevent unused variable warnings... */
-  for(i=0; i<rp->nrhs; i++){
-    if (rp->rhsalias[i]) {
-      append_str("(void)yymsp_%d_major;\n", 0, i, 0);
+    /* and prevent unused variable warnings... */
+    for(i=0; i<rp->nrhs; i++){
+      if (rp->rhsalias[i]) {
+        append_str("(void)yymsp_%d_major;\n", 0, i, 0);
+      }
     }
   }
 

@@ -1551,6 +1551,9 @@ int main(int argc, char **argv)
   int exitcode;
   struct lemon lem;
 
+  struct symbol *dollar;
+
+
 #ifdef LEMONPLUSPLUS
   /* %define lemonplusplus */
   handle_D_option("__lemonplusplus");
@@ -1580,7 +1583,11 @@ int main(int argc, char **argv)
   lem.filename = OptArg(0);
   lem.basisflag = basisflag;
   lem.nolinenosflag = nolinenosflag;
-  Symbol_new("$");
+  dollar = Symbol_new("$");
+#ifdef LEMONPLUSPLUS
+  dollar->datatype = "void";
+#endif
+
   lem.errsym = Symbol_new("error");
   lem.errsym->datatype = "int";
   lem.errsym->useCnt = 0;

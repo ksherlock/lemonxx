@@ -3579,14 +3579,16 @@ PRIVATE void translate_code(struct lemon *lemp, struct rule *rp){
     }
   }
   /* also generate major tokens  -- if @ in code.*/
-  if (strchr(rp->code, '@')) for(i=0; i<rp->nrhs; i++){
-    if (rp->rhsalias[i]) {
+  if (strchr(rp->code, '@')) {
+    for(i=0; i<rp->nrhs; i++){
+      if (rp->rhsalias[i]) {
 
-      append_str("const int yymsp_%d_major", 0, i, 0);
-      append_str(" = yymsp[%d].major;", 0 ,i-rp->nrhs+1, 0);
-      append_str(" /* @", 0, 0, 0);
-      append_str(rp->rhsalias[i], 0, 0, 0);
-      append_str(" */\n", 0, 0, 0);
+        append_str("const int yymsp_%d_major", 0, i, 0);
+        append_str(" = yymsp[%d].major;", 0 ,i-rp->nrhs+1, 0);
+        append_str(" /* @", 0, 0, 0);
+        append_str(rp->rhsalias[i], 0, 0, 0);
+        append_str(" */\n", 0, 0, 0);
+      }
     }
 
     /* and prevent unused variable warnings... */

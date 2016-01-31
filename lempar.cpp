@@ -44,14 +44,14 @@ namespace {
   };
 
   template<class T, class... Args>
-  T &yy_constructor(void *vp, Args&&... args ) {
+  typename yy_fix_type<T>::type & &yy_constructor(void *vp, Args&&... args ) {
     typedef typename yy_fix_type<T>::type TT;
     TT *tmp = ::new(vp) TT(std::forward<Args>(args)...);
     return *tmp;
   }
 
   template<class T>
-  T &yy_cast(void *vp) {
+  typename yy_fix_type<T>::type & &yy_cast(void *vp) {
     typedef typename yy_fix_type<T>::type TT;
     return *(TT *)vp;
   }

@@ -4304,7 +4304,6 @@ void ReportTable(
 #ifdef LEMONPLUSPLUS
 
 
-#ifdef LEMONPLUSPLUS
   /* set the %token_type and %default_type if not set */
   if (!lemp->tokentype) {
     lemp->tokentype = "void *";
@@ -4312,9 +4311,6 @@ void ReportTable(
   if (!lemp->vartype) {
     lemp->vartype = lemp->tokentype;
   }
-#endif
-
-
 
   /* generate non-terminal destructors.   */
 
@@ -4324,19 +4320,6 @@ void ReportTable(
     //if (sp->type == MULTITERMINAL) continue;
 
     sp->destructor = "";
-    #if 0
-    if (sp->datatype == 0) {
-      switch(sp->type) {
-        case NONTERMINAL:
-          sp->datatype = lemp->vartype;
-          break;
-        case TERMINAL:
-        case MULTITERMINAL:
-          sp->datatype = lemp->tokentype;
-          break;
-      }
-    }
-    #endif
   }
 
   // error symbol, if needed

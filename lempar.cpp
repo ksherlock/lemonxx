@@ -44,14 +44,14 @@ namespace {
   };
 
   template<class T, class... Args>
-  typename yy_fix_type<T>::type & &yy_constructor(void *vp, Args&&... args ) {
+  typename yy_fix_type<T>::type &yy_constructor(void *vp, Args&&... args ) {
     typedef typename yy_fix_type<T>::type TT;
     TT *tmp = ::new(vp) TT(std::forward<Args>(args)...);
     return *tmp;
   }
 
   template<class T>
-  typename yy_fix_type<T>::type & &yy_cast(void *vp) {
+  typename yy_fix_type<T>::type &yy_cast(void *vp) {
     typedef typename yy_fix_type<T>::type TT;
     return *(TT *)vp;
   }
@@ -113,7 +113,7 @@ namespace {
   public:
     typedef typename std::conditional<
       std::is_trivial<TT>::value,
-      T,
+      TT,
       typename std::aligned_storage<sizeof(TT),alignof(TT)>::type
     >::type type;
   };

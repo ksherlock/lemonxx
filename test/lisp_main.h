@@ -40,10 +40,10 @@ class mexpr_parser : public lemon_base<Token>{
 	protected:
 	virtual void parse_failure() final override {
 		fail = true;
-		printf("Fail!\n");
+		//printf("Fail!\n");
 	}
 	virtual void parse_accept() final override {
-		printf("Accept!\n");
+		//printf("Accept!\n");
 	}
 
 	virtual void syntax_error(int yymajor, token_type &yyminor) final override {

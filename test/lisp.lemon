@@ -44,7 +44,7 @@ program ::= statement_list.
 
 statement_list ::= statement(E). {
 	printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
-	
+	lisp::clear_temp_list();
 }
 
 /*

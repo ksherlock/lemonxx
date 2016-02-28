@@ -34,7 +34,6 @@ namespace lisp {
 		static std::vector<void *> free_list;
 		static std::vector<chunk> storage;
 
-		void clear_temp_list() { temp_list.clear(); }
 
 		template<class T>
 		T *temp(T *t) { temp_list.push_back(t); return t; }
@@ -128,6 +127,7 @@ namespace lisp {
 
 
 
+	void clear_temp_list() { temp_list.clear(); }
 
 	void initialize(std::size_t size) {
 

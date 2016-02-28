@@ -3349,7 +3349,11 @@ PRIVATE FILE *tplt_open(struct lemon *lemp)
   }else if( access(templatename,004)==0 ){
     tpltname = templatename;
   }else{
+    #ifdef HOMEBREW_TEMPLATE_PATH
+    tpltname = HOMEBREW_TEMPLATE_PATH "lempar" FILE_EXTENSION ;
+    #else
     tpltname = pathsearch(lemp->argv0,templatename,0);
+    #endif
   }
   if( tpltname==0 ){
     fprintf(stderr,"Can't find the parser driver template file \"%s\".\n",

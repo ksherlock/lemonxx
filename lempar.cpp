@@ -950,7 +950,7 @@ void Parse(
     yyact = yy_find_shift_action(yypParser,(YYCODETYPE)yymajor);
     if( yyact <= YY_MAX_SHIFTREDUCE ){
       if( yyact > YY_MAX_SHIFT ) yyact += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
-      yy_shift(yypParser,yyact,yymajor,yyminor);
+      yy_shift(yypParser,yyact,yymajor,std::forward<ParseTOKENTYPE>(yyminor));
 #ifndef YYNOERRORRECOVERY
       yypParser->yyerrcnt--;
 #endif
@@ -989,7 +989,7 @@ void Parse(
       **
       */
       if( yypParser->yyerrcnt<0 ){
-        yy_syntax_error(yypParser,yymajor,yyminor);
+        yy_syntax_error(yypParser,yymajor,std::forward<ParseTOKENTYPE>(yyminor));
       }
       yymx = yypParser->yystack[yypParser->yyidx].major;
       if( yymx==YYERRORSYMBOL || yyerrorhit ){
@@ -1031,7 +1031,7 @@ void Parse(
       ** Applications can set this macro (for example inside %include) if
       ** they intend to abandon the parse upon the first syntax error seen.
       */
-      yy_syntax_error(yypParser,yymajor, yyminor);
+      yy_syntax_error(yypParser,yymajor, std::forward<ParseTOKENTYPE>(yyminor));
       //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
       yy_destructor(yyminor);
       yymajor = YYNOCODE;
@@ -1047,7 +1047,7 @@ void Parse(
       ** three input tokens have been successfully shifted.
       */
       if( yypParser->yyerrcnt<=0 ){
-        yy_syntax_error(yypParser,yymajor, yyminor);
+        yy_syntax_error(yypParser,yymajor, std::forward<ParseTOKENTYPE>(yyminor));
       }
       yypParser->yyerrcnt = 3;
       //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);

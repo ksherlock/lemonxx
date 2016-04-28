@@ -723,7 +723,9 @@ static void yy_shift(
   yytos->stateno = (YYACTIONTYPE)yyNewState;
   yytos->major = (YYCODETYPE)yyMajor;
   //yytos->minor.yy0 = yyMinor;
-  yy_move<ParseTOKENTYPE>(std::addressof(yytos->minor.yy0), std::addressof(yyMinor));
+  //yy_move<ParseTOKENTYPE>(std::addressof(yytos->minor.yy0), std::addressof(yyMinor));
+  //yy_move also calls destructor.
+  yy_constructor<ParseTOKENTYPE>(std::addressof(yytos->minor.yy0), std::forward<ParseTOKENTYPE>(yyMinor));
   yyTraceShift(yypParser, yyNewState);
 }
 
@@ -1000,10 +1002,9 @@ void Parse(
         }
 #endif
         //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
-        yy_destructor(yyminor);
         yymajor = YYNOCODE;
       }else{
-         while(
+        while(
           yypParser->yyidx >= 0 &&
           yymx != YYERRORSYMBOL &&
           (yyact = yy_find_reduce_action(
@@ -1014,7 +1015,6 @@ void Parse(
         }
         if( yypParser->yyidx < 0 || yymajor==0 ){
           //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
-          yy_destructor(yyminor);
           yy_parse_failed(yypParser);
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
@@ -1033,7 +1033,6 @@ void Parse(
       */
       yy_syntax_error(yypParser,yymajor, std::forward<ParseTOKENTYPE>(yyminor));
       //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
-      yy_destructor(yyminor);
       yymajor = YYNOCODE;
       
 #else  /* YYERRORSYMBOL is not defined */
@@ -1051,7 +1050,6 @@ void Parse(
       }
       yypParser->yyerrcnt = 3;
       //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
-      yy_destructor(yyminor);
       if( yyendofinput ){
         yy_parse_failed(yypParser);
       }

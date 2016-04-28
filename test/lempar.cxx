@@ -189,9 +189,6 @@ namespace {
 %%
 /************* End control #defines *******************************************/
 namespace {
-/* The yyzerominor constant is used to initialize instances of
-** YYMINORTYPE objects to zero. */
-const YYMINORTYPE yyzerominor = { 0 };
 
 /* Define the yytestcase() macro to be a no-op if is not already defined
 ** otherwise.
@@ -345,7 +342,9 @@ class yypParser : public LEMON_SUPER {
 #ifdef YYTRACKMAXSTACKDEPTH
   int yyidxMax = 0;                 /* Maximum value of yyidx */
 #endif
+#ifndef YYNOERRORRECOVERY
   int yyerrcnt = 0;                 /* Shifts left before out of the error */
+#endif
 #if YYSTACKDEPTH<=0
   int yystksz = 0;                  /* Current side of the stack */
   yyStackEntry *yystack = nullptr;        /* The parser's stack */
@@ -359,17 +358,17 @@ class yypParser : public LEMON_SUPER {
   void initialize();
   void yy_accept();
   void yy_parse_failed();
-  void yy_syntax_error(int yymajor, YYMINORTYPE &yyminor);
+  void yy_syntax_error(int yymajor, ParseTOKENTYPE &yyminor);
 
   void yy_transfer(yyStackEntry *yySource, yyStackEntry *yyDest);
 
   void yy_pop_parser_stack();
-  int yy_find_shift_action(YYCODETYPE iLookAhead) const;
+  unsigned int yy_find_shift_action(YYCODETYPE iLookAhead) const;
 
-  void yy_shift(int yyNewState, int yyMajor, YYMINORTYPE *yypMinor);
-  void yy_reduce(int yyruleno);
+  void yy_shift(int yyNewState, int yyMajor, ParseTOKENTYPE &&yypMinor);
+  void yy_reduce(usnigned int yyruleno);
   static int yy_find_reduce_action(int stateno, YYCODETYPE iLookAhead);
-  void yyStackOverflow(YYMINORTYPE *yypMinor);
+  void yyStackOverflow();
 
 #ifndef NDEBUG
   void yyTraceShift(int yyNewState) const;
@@ -574,7 +573,7 @@ yypParser::~yypParser() {
 ** Find the appropriate action for a parser given the terminal
 ** look-ahead token iLookAhead.
 */
-int yypParser::yy_find_shift_action(
+unsigned int yypParser::yy_find_shift_action(
   YYCODETYPE iLookAhead     /* The look-ahead token */
 ) const {
   int i;
@@ -669,7 +668,7 @@ int yypParser::yy_find_reduce_action(
 /*
 ** The following routine is called if the stack overflows.
 */
-void yypParser::yyStackOverflow(YYMINORTYPE *yypMinor){
+void yypParser::yyStackOverflow(){
    yyidx--;
 #ifndef NDEBUG
    if( yyTraceFILE ){
@@ -711,7 +710,7 @@ void yypParser::yyTraceShift(int yyNewState) const {
 void yypParser::yy_shift(
   int yyNewState,               /* The new state to shift in */
   int yyMajor,                  /* The major token to shift in */
-  YYMINORTYPE *yypMinor         /* Pointer to the minor token to shift in */
+  ParseTOKENTYPE &&yyMinor      /* The minor token to shift in */
 ){
   yyStackEntry *yytos;
   yyidx++;
@@ -722,14 +721,14 @@ void yypParser::yy_shift(
 #endif
 #if YYSTACKDEPTH>0 
   if( yyidx>=YYSTACKDEPTH ){
-    yyStackOverflow(yypMinor);
+    yyStackOverflow();
     return;
   }
 #else
   if( yyidx>=yystksz ){
     yyGrowStack();
     if( yyidx>=yystksz ){
-      yyStackOverflow(yypMinor);
+      yyStackOverflow();
       return;
     }
   }
@@ -737,8 +736,10 @@ void yypParser::yy_shift(
   yytos = &yystack[yyidx];
   yytos->stateno = (YYACTIONTYPE)yyNewState;
   yytos->major = (YYCODETYPE)yyMajor;
-  //yytos->minor = *yypMinor;
-  yy_move(yyMajor, &yytos->minor, yypMinor);
+  //yytos->minor.yy0 = yyMinor;
+  //yy_move also calls the destructor...
+  //yy_move<ParseTOKENTYPE>(std::addressof(yytos->minor.yy0), std::addressof(yyMinor));
+  yy_constructor<ParseTOKENTYPE>(std::addressof(yytos->minor.yy0), std::move(yyMinor));
   yyTraceShift(yyNewState);
 }
 
@@ -757,23 +758,45 @@ const struct {
 ** follow the reduce.
 */
 void yypParser::yy_reduce(
-  int yyruleno                 /* Number of the rule by which to reduce */
+  unsigned int yyruleno           /* Number of the rule by which to reduce */
 ){
   int yygoto;                     /* The next state */
   int yyact;                      /* The next action */
-  YYMINORTYPE yygotominor;        /* The LHS of the rule reduced */
   yyStackEntry *yymsp;            /* The top of the parser's stack */
   int yysize;                     /* Amount to pop the stack */
   yymsp = &yystack[yyidx];
 #ifndef NDEBUG
-  if( yyTraceFILE && yyruleno>=0 
-        && yyruleno<(int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])) ){
+  if( yyTraceFILE && yyruleno<(int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])) ){
     yysize = yyRuleInfo[yyruleno].nrhs;
     fprintf(yyTraceFILE, "%sReduce [%s], go to state %d.\n", yyTracePrompt,
       yyRuleName[yyruleno], yymsp[-yysize].stateno);
   }
 #endif /* NDEBUG */
-  yygotominor = yyzerominor;
+
+  /* Check that the stack is large enough to grow by a single entry
+  ** if the RHS of the rule is empty.  This ensures that there is room
+  ** enough on the stack to push the LHS value */
+  if( yyRuleInfo[yyruleno].nrhs==0 ){
+#ifdef YYTRACKMAXSTACKDEPTH
+    if( yyidx>yyidxMax ){
+      yyidxMax = yyidx;
+    }
+#endif
+#if YYSTACKDEPTH>0 
+    if( yyidx>=YYSTACKDEPTH-1 ){
+      yyStackOverflow();
+      return;
+    }
+#else
+    if( yyidx>=yystksz-1 ){
+      yyGrowStack();
+      if( yyidx>=yystksz-1 ){
+        yyStackOverflow();
+        return;
+      }
+    }
+#endif
+  }
 
   switch( yyruleno ){
   /* Beginning here are the reduction cases.  A typical example
@@ -788,33 +811,21 @@ void yypParser::yy_reduce(
 %%
 /********** End reduce actions ************************************************/
   };
-  assert( yyruleno>=0 && yyruleno<sizeof(yyRuleInfo)/sizeof(yyRuleInfo[0]) );
+  assert( yyruleno<sizeof(yyRuleInfo)/sizeof(yyRuleInfo[0]) );
   yygoto = yyRuleInfo[yyruleno].lhs;
   yysize = yyRuleInfo[yyruleno].nrhs;
-  yyidx -= yysize;
   yyact = yy_find_reduce_action(yymsp[-yysize].stateno,(YYCODETYPE)yygoto);
   if( yyact <= YY_MAX_SHIFTREDUCE ){
     if( yyact>YY_MAX_SHIFT ) yyact += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
-    /* If the reduce action popped at least
-    ** one element off the stack, then we can push the new element back
-    ** onto the stack here, and skip the stack overflow test in yy_shift().
-    ** That gives a significant speed improvement. */
-    if( yysize ){
-      yyidx++;
-      yymsp -= yysize-1;
-      yymsp->stateno = (YYACTIONTYPE)yyact;
-      yymsp->major = (YYCODETYPE)yygoto;
-      //yymsp->minor = yygotominor;
-      yy_move(yygoto, &yymsp->minor, &yygotominor);
-      yyTraceShift(yyact);
-    }else{
-      yy_shift(yyact,yygoto,&yygotominor);
-    }
+    yyidx -= yysize - 1;
+    yymsp -= yysize-1;
+    yymsp->stateno = (YYACTIONTYPE)yyact;
+    yymsp->major = (YYCODETYPE)yygoto;
+    yyTraceShift(yyact);
   }else{
     assert( yyact == YY_ACCEPT_ACTION );
+    yyidx -= yysize;
     yy_accept();
-    //yy_destructor(yygoto, &yygotominor); // ??? only an issue if terminal has rhs?
-    // yygotominor will not be deletable if now rhs.
   }
 }
 
@@ -843,10 +854,10 @@ void yypParser::yy_parse_failed(){
 */
 void yypParser::yy_syntax_error(
   int yymajor,                   /* The major type of the error token */
-  YYMINORTYPE &yyminor           /* The minor type of the error token */
+  ParseTOKENTYPE &yyminor        /* The minor type of the error token */
 ){
-//#define TOKEN (yyminor.yy0)
-  auto &TOKEN = yy_cast<ParseTOKENTYPE>(std::addressof(yyminor.yy0));
+//#define TOKEN yyminor
+  auto &TOKEN = yyminor;
 /************ Begin %syntax_error code ****************************************/
 %%
 /************ End %syntax_error code ******************************************/
@@ -897,8 +908,8 @@ void yypParser::parse(
   int yymajor,                 /* The major token code number */
   ParseTOKENTYPE &&yyminor       /* The value for the token */
 ){
-  YYMINORTYPE yyminorunion;
-  int yyact;            /* The parser action. */
+  //YYMINORTYPE yyminorunion;
+  unsigned int yyact;            /* The parser action. */
 #if !defined(YYERRORSYMBOL) && !defined(YYNOERRORRECOVERY)
   int yyendofinput;     /* True if we are at the end of input */
 #endif
@@ -912,14 +923,14 @@ void yypParser::parse(
   if( yyidx<0 ){
 #if YYSTACKDEPTH<=0
     if( yystksz <=0 ){
-      /*memset(&yyminorunion, 0, sizeof(yyminorunion));*/
-      yyminorunion = yyzerominor;
-      yyStackOverflow(&yyminorunion);
+      yyStackOverflow();
       return;
     }
 #endif
     yyidx = 0;
+#ifndef YYNOERRORRECOVERY
     yyerrcnt = -1;
+#endif
     yystack[0].stateno = 0;
     yystack[0].major = 0;
 #ifndef NDEBUG
@@ -929,8 +940,6 @@ void yypParser::parse(
     }
 #endif
   }
-  //yyminorunion.yy0 = yyminor;
-  yy_constructor<ParseTOKENTYPE>(std::addressof(yyminorunion.yy0), std::move(yyminor));
 #if !defined(YYERRORSYMBOL) && !defined(YYNOERRORRECOVERY)
   yyendofinput = (yymajor==0);
 #endif
@@ -945,8 +954,10 @@ void yypParser::parse(
     yyact = yy_find_shift_action((YYCODETYPE)yymajor);
     if( yyact <= YY_MAX_SHIFTREDUCE ){
       if( yyact > YY_MAX_SHIFT ) yyact += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
-      yy_shift(yyact,yymajor,&yyminorunion);
+      yy_shift(yyact,yymajor,std::move(yyminor));
+#ifndef YYNOERRORRECOVERY
       yyerrcnt--;
+#endif
       yymajor = YYNOCODE;
     }else if( yyact <= YY_MAX_REDUCE ){
       yy_reduce(yyact-YY_MIN_REDUCE);
@@ -981,7 +992,7 @@ void yypParser::parse(
       **
       */
       if( yyerrcnt<0 ){
-        yy_syntax_error(yymajor,yyminorunion);
+        yy_syntax_error(yymajor,yyminor);
       }
       yymx = yystack[yyidx].major;
       if( yymx==YYERRORSYMBOL || yyerrorhit ){
@@ -991,10 +1002,10 @@ void yypParser::parse(
              yyTracePrompt,yyTokenName[yymajor]);
         }
 #endif
-        yy_destructor((YYCODETYPE)yymajor,&yyminorunion);
+        //yy_destructor(yyminor);
         yymajor = YYNOCODE;
       }else{
-         while(
+        while(
           yyidx >= 0 &&
           yymx != YYERRORSYMBOL &&
           (yyact = yy_find_reduce_action(
@@ -1004,13 +1015,11 @@ void yypParser::parse(
           yy_pop_parser_stack();
         }
         if( yyidx < 0 || yymajor==0 ){
-          yy_destructor((YYCODETYPE)yymajor,&yyminorunion);
+          //yy_destructor(yyminor);
           yy_parse_failed();
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
-          YYMINORTYPE u2;
-          u2.YYERRSYMDT = 0;
-          yy_shift(yyact,YYERRORSYMBOL,&u2);
+          yy_shift(yyact,YYERRORSYMBOL,yyminor);
         }
       }
       yyerrcnt = 3;
@@ -1023,8 +1032,8 @@ void yypParser::parse(
       ** Applications can set this macro (for example inside %include) if
       ** they intend to abandon the parse upon the first syntax error seen.
       */
-      yy_syntax_error(yymajor,yyminorunion);
-      yy_destructor((YYCODETYPE)yymajor,&yyminorunion);
+      yy_syntax_error(yymajor,yyminor);
+      //yy_destructor(yyminor);
       yymajor = YYNOCODE;
       
 #else  /* YYERRORSYMBOL is not defined */
@@ -1038,10 +1047,10 @@ void yypParser::parse(
       ** three input tokens have been successfully shifted.
       */
       if( yyerrcnt<=0 ){
-        yy_syntax_error(yymajor,yyminorunion);
+        yy_syntax_error(yymajor,yyminor);
       }
       yyerrcnt = 3;
-      yy_destructor((YYCODETYPE)yymajor,&yyminorunion);
+      //yy_destructor(yyminor);
       if( yyendofinput ){
         yy_parse_failed();
       }

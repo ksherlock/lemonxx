@@ -4768,7 +4768,8 @@ void ReportTable(
     writeRuleText(out, rp);
     fprintf(out, " */\n"); lineno++;
     for(rp2=rp->next; rp2; rp2=rp2->next){
-      if( rp2->code==rp->code ){
+      /* lemon++ -- prefix and suffix must also match */
+      if( rp2->code==rp->code && rp2->codePrefix == rp->codePrefix && rp2->codeSuffix == rp->codeSuffix ){
         fprintf(out,"      case %d: /* ", rp2->iRule);
         writeRuleText(out, rp2);
         fprintf(out," */ yytestcase(yyruleno==%d);\n", rp2->iRule); lineno++;

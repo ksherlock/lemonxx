@@ -366,7 +366,7 @@ class yypParser : public LEMON_SUPER {
   unsigned int yy_find_shift_action(YYCODETYPE iLookAhead) const;
 
   void yy_shift(int yyNewState, int yyMajor, ParseTOKENTYPE &&yypMinor);
-  void yy_reduce(usnigned int yyruleno);
+  void yy_reduce(unsigned int yyruleno);
   static int yy_find_reduce_action(int stateno, YYCODETYPE iLookAhead);
   void yyStackOverflow();
 

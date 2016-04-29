@@ -3973,6 +3973,7 @@ PRIVATE void emit_code(
  }
 
  /* Generate code to do the reduce action */
+ if ( rp->code && rp->code[0] == '\n' && rp->code[1] == 0 ) rp->code = 0;
  if( rp->code ){
    if( !lemp->nolinenosflag ){
      (*lineno)++;
@@ -4772,7 +4773,7 @@ void ReportTable(
   for(rp=lemp->rule; rp; rp=rp->next){
     struct rule *rp2;               /* Other rules with the same action */
     if( rp->code==0 ) continue;
-    if( rp->code[0]=='\n' && rp->code[1]==0 ) continue; /* Will be default: */
+    if( rp->code[0]=='\n' && rp->code[1]==0 && rp->codePrefix==0 && rp->codeSuffix==0 ) continue; /* Will be default: */
     fprintf(out,"      case %d: /* ", rp->iRule);
     writeRuleText(out, rp);
     fprintf(out, " */\n"); lineno++;
@@ -4794,7 +4795,7 @@ void ReportTable(
   fprintf(out,"      default:\n"); lineno++;
   for(rp=lemp->rule; rp; rp=rp->next){
     if( rp->code==0 ) continue;
-    assert( rp->code[0]=='\n' && rp->code[1]==0 );
+    assert( rp->code[0]=='\n' && rp->code[1]==0 && rp->codePrefix==0 && rp->codeSuffix==0 );
     fprintf(out,"      /* (%d) ", rp->iRule);
     writeRuleText(out, rp);
     fprintf(out, " */ yytestcase(yyruleno==%d);\n", rp->iRule); lineno++;

@@ -3693,11 +3693,27 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
 
   append_str(0,0,0,0);
 
-  if (lhsdirect && lhsused) {
-    append_str("  yy_destructor<", 0, 0, 0);
-    append_str(sp_datatype(lemp, rp->rhs[0]), 0, 0, 0);
-    // yy0 is the terminal type.
-    append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, 1-rp->nrhs, 0);
+  // call destructor on all un-named RHS tokens now
+  // so it doesn't interfere with lhs direct.
+
+  for(i=0; i<rp->nrhs; i++){
+
+    struct symbol *sp = rp->rhs[i];
+    int dtnum;
+    if( sp->type==MULTITERMINAL ){
+      dtnum = sp->subsym[0]->dtnum;
+    }else{
+      dtnum = sp->dtnum;
+    }
+
+    /* generate destructors for all RHS. */
+    /* except last if lhsdirect! */
+    if (!rp->rhsalias[i]) {
+      // also generate destructors if NOT referenced!
+      append_str("  yy_destructor<", 0, 0, 0);
+      append_str(sp_datatype(lemp, sp), 0, 0, 0);
+      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
+    }
   }
 
 
@@ -3861,19 +3877,12 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     /* generate destructors for all RHS. */
     /* except last if lhsdirect! */
     if (i == 0) append_str("\n", 0, 0, 0);
-    if (i > 0 || yy0_destructor) {
-      if (rp->rhsalias[i]) {
-        append_str("  yy_destructor(", 0, 0, 0);
-        append_str(rp->rhsalias[i], 0, 0, 0);
-        append_str(");\n", 0, 0, 0);
-      }
-      else {
-        // also generate destructors if NOT referenced!
-        append_str("  yy_destructor<", 0, 0, 0);
-        append_str(sp_datatype(lemp, sp), 0, 0, 0);
-        append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
-      }
+    if (rp->rhsalias[i]) {
+      append_str("  yy_destructor(", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str(");\n", 0, 0, 0);
     }
+
     #endif
 
     if( rp->rhsalias[i] ){

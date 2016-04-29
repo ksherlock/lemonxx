@@ -251,12 +251,10 @@ function_call ::= LBRACKET error RBRACKET. {
 	fprintf(stderr, "Error parsing function parameters/arguments.\n");
 }
 
-/* todo -- lemon needs the LHS to call the constructor */
-opt_arg_list(RV) ::= . { /* RV */ } 
+opt_arg_list ::= .
 
-opt_arg_list(RV) ::= arg_list(X).
-{ RV = std::move(X); }
+opt_arg_list(L) ::= arg_list(L).
 
-arg_list(RV) ::= expression(E). { RV.push_back(E); }
-arg_list(RV) ::= arg_list(L) SEMI expression(E). { RV = std::move(L); RV.push_back(E); }
+arg_list(L) ::= expression(E). { L.push_back(E); }
+arg_list(L) ::= arg_list(L) SEMI expression(E). { L.push_back(E); }
 

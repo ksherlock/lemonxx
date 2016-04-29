@@ -1019,7 +1019,7 @@ void yypParser::parse(
           yy_parse_failed();
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
-          yy_shift(yyact,YYERRORSYMBOL,yyminor);
+          yy_shift(yyact,YYERRORSYMBOL,std::move(yyminor));
         }
       }
       yyerrcnt = 3;

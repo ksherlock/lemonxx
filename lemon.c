@@ -3594,8 +3594,18 @@ const char *sp_datatype(struct lemon *lemp, struct symbol *sp) {
       return NULL;
   }
 }
-
 #endif
+
+int sp_dtnum(struct symbol *sp) {
+
+  if( sp->type==MULTITERMINAL ){
+    return sp->subsym[0]->dtnum;
+  }else{
+    return sp->dtnum;
+  }
+
+}
+
 /*
 ** zCode is a string that is the action associated with a rule.  Expand
 ** the symbols in this string so that the refer to elements of the parser
@@ -3699,12 +3709,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   for(i=0; i<rp->nrhs; i++){
 
     struct symbol *sp = rp->rhs[i];
-    int dtnum;
-    if( sp->type==MULTITERMINAL ){
-      dtnum = sp->subsym[0]->dtnum;
-    }else{
-      dtnum = sp->dtnum;
-    }
+    int dtnum = sp_dtnum(sp);
 
     /* generate destructors for all RHS. */
     /* except last if lhsdirect! */
@@ -3742,12 +3747,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
 
     if (rp->rhsalias[i]) {
       struct symbol *sp = rp->rhs[i];
-      int dtnum;
-      if( sp->type==MULTITERMINAL ){
-        dtnum = sp->subsym[0]->dtnum;
-      }else{
-        dtnum = sp->dtnum;
-      }
+      int dtnum = sp_dtnum(sp);
 
       append_str("auto &", 0, 0, 0);
       append_str(rp->rhsalias[i], 0, 0, 0);
@@ -3826,12 +3826,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
             }else{
               #ifndef LEMONPLUSPLUS
               struct symbol *sp = rp->rhs[i];
-              int dtnum;
-              if( sp->type==MULTITERMINAL ){
-                dtnum = sp->subsym[0]->dtnum;
-              }else{
-                dtnum = sp->dtnum;
-              }
+              int dtnum = sp_dtnum(sp);
               append_str("yymsp[%d].minor.yy%d",0,i-rp->nrhs+1, dtnum);
               cp = xp;
               #endif
@@ -3867,12 +3862,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     #ifdef LEMONPLUSPLUS
 
     struct symbol *sp = rp->rhs[i];
-    int dtnum;
-    if( sp->type==MULTITERMINAL ){
-      dtnum = sp->subsym[0]->dtnum;
-    }else{
-      dtnum = sp->dtnum;
-    }
+    int dtnum = sp_dtnum(sp);
 
     /* generate destructors for all RHS. */
     /* except last if lhsdirect! */

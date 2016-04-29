@@ -43,8 +43,10 @@ program ::= statement_list.
 %type statement_list {void}
 
 statement_list ::= statement(E). {
-	printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
+	if (!error)
+		printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
 	lisp::clear_temp_list();
+	error = 0;
 }
 
 /*
@@ -55,7 +57,7 @@ statement(RV) ::= variable_assignment(E). { RV = E; }
 
 statement(RV) ::= function_assignment(E). { RV = E; }
 
-statement(RV) ::= expression(E). { 
+statement(RV) ::= expression(E). {
 	try {
 		auto tmp = E->substitute(lisp::env);
 		tmp = tmp->evaluate();
@@ -63,33 +65,31 @@ statement(RV) ::= expression(E). {
 	}
 	catch(std::exception &e) {
 		fprintf(stderr, "%s\n", e.what());
-		RV = nullptr;
+		error++;
 	}
-
 }
 
 
 // these should also add to the table.
 variable_assignment(RV) ::= SYMBOL(S) COLON expression(E) . {
+
 	try {
 		auto tmp = E->substitute(lisp::env);
 		tmp = tmp->evaluate();
 		auto label = lisp::make_symbol(S.stringValue);
-		lisp::env[label] = tmp;
+		if (!error) lisp::env[label] = tmp;
 		RV = tmp;
 	}
 	catch(std::exception &e) {
 		fprintf(stderr, "%s\n", e.what());
-		RV = nullptr;
+		error++;
 	}
-
 }
 
 // function call vs function definition has conflicts unless they use the same argument list.
 // need to verify args are actually SYMBOLS and not arbitrary expressions later.
 
-function_assignment(RV) ::= SYMBOL(S) function_call(F) COLON expression(E).
-{
+function_assignment(RV) ::= SYMBOL(S) function_call(F) COLON expression(E). {
 
 	try {
 
@@ -104,12 +104,12 @@ function_assignment(RV) ::= SYMBOL(S) function_call(F) COLON expression(E).
 
 		tmp = tmp->substitute(lisp::env);
 
-		lisp::env[label] = tmp;
+		if (!error) lisp::env[label] = tmp;
 		RV = tmp;
 	}
 	catch(std::exception &e) {
 		fprintf(stderr, "%s\n", e.what());
-		RV = nullptr;
+		error++;
 	}
 
 }
@@ -133,7 +133,7 @@ lambda(RV) ::= LAMBDA LBRACKET function_call(F) SEMI expression(E) RBRACKET. {
 	}
 	catch(std::exception &e) {
 		fprintf(stderr, "%s\n", e.what());
-		RV = nullptr;
+		error++;
 	}
 }
 
@@ -222,7 +222,13 @@ list(RV) ::= LPAREN expression_list(L) DOT expression(E) RPAREN. {
 	RV = std::accumulate(L.rbegin(), L.rend(), E, [](lisp::cell_ptr cdr, lisp::cell_ptr car){
 		return lisp::make_pair(car, cdr);
 	});
-}	
+}
+
+list(RV) ::= LPAREN error RPAREN. {
+	fprintf(stderr, "Error parsing list.\n");
+	RV = lisp::make_pair(nullptr, nullptr);
+}
+
 
 %type expression_list {std::vector<lisp::cell_ptr> }
 
@@ -240,6 +246,10 @@ expression_list(RV) ::= expression_list(L) COMMA expression(E) .
 
 function_call(RV) ::=  LBRACKET opt_arg_list(X) RBRACKET.
 { RV = std::move(X); }
+
+function_call ::= LBRACKET error RBRACKET. {
+	fprintf(stderr, "Error parsing function parameters/arguments.\n");
+}
 
 /* todo -- lemon needs the LHS to call the constructor */
 opt_arg_list(RV) ::= . { /* RV */ } 

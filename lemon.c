@@ -3822,7 +3822,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
               append_str("yymsp[%d].major",-1,i-rp->nrhs+1,0);
               #endif
               cp = xp;
-              if (!used[i]) used[i] = 2;
+              used[i] |= 2;
             }else{
               #ifndef LEMONPLUSPLUS
               struct symbol *sp = rp->rhs[i];
@@ -3830,7 +3830,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
               append_str("yymsp[%d].minor.yy%d",0,i-rp->nrhs+1, dtnum);
               cp = xp;
               #endif
-              used[i] = 1;
+              used[i] |= 1;
             }
             break;
           }

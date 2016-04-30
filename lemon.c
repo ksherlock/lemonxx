@@ -3736,6 +3736,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
       append_str("));\n", 0, 0, 0);
     } else {
       // generate a local variable.
+      append_str("  ", 0, 0, 0);
       append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
       append_str(" ", 0, 0, 0);
       append_str(rp->lhsalias, 0, 0, 0);
@@ -3968,7 +3969,8 @@ PRIVATE void emit_code(
 
  /* Setup code prior to the #line directive */
  if( rp->codePrefix && rp->codePrefix[0] ){
-   fprintf(out, "{%s", rp->codePrefix);
+   fprintf(out, "{\n%s", rp->codePrefix);
+   (*lineno)++;
    for(cp=rp->codePrefix; *cp; cp++){ if( *cp=='\n' ) (*lineno)++; }
  }
 
@@ -3994,7 +3996,7 @@ PRIVATE void emit_code(
    for(cp=rp->codeSuffix; *cp; cp++){ if( *cp=='\n' ) (*lineno)++; }
  }
 
- if( rp->codePrefix ){
+ if( rp->codePrefix && rp->codePrefix[0] ){
    fprintf(out, "}\n"); (*lineno)++;
  }
 

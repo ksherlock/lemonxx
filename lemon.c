@@ -3642,14 +3642,11 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
  * 2. no -overwrites- comments.
  */
 
-  if( rp->lhsalias==0 ){
-    /* There is no LHS value symbol. */
-    lhsdirect = 1;
-  }else if( rp->nrhs==0 ){
+  if( rp->nrhs==0 ){
     /* If there are no RHS symbols, then writing directly to the LHS is ok */
     lhsdirect = 1;
   }else if( rp->rhsalias[0]==0 ){
-    /* The left-most RHS symbol has not value.  LHS direct is ok.  But
+    /* The left-most RHS symbol has no value.  LHS direct is ok.  But
     ** we have to call the destructor on the RHS symbol first. */
     lhsdirect = 1;
     #ifndef LEMONPLUSPLUS
@@ -3661,6 +3658,9 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
       rp->codePrefix = Strsafe(append_str(0,0,0,0));
     }
     #endif
+  }else if( rp->lhsalias==0 ){
+    /* There is no LHS value symbol. */
+    lhsdirect = 1;
   }else if( strcmp(rp->lhsalias,rp->rhsalias[0])==0 ){
     /* The LHS symbol and the left-most RHS symbol are the same, so 
     ** direct writing is allowed */
@@ -3949,7 +3949,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
 
   /* Suffix code generation complete */
   cp = append_str(0,0,0,0);
-  if( cp ) rp->codeSuffix = Strsafe(cp);
+  if( cp && cp[0] ) rp->codeSuffix = Strsafe(cp);
 
   return rc;
 }
@@ -4773,7 +4773,14 @@ void ReportTable(
   for(rp=lemp->rule; rp; rp=rp->next){
     struct rule *rp2;               /* Other rules with the same action */
     if( rp->code==0 ) continue;
-    if( rp->code[0]=='\n' && rp->code[1]==0 && rp->codePrefix==0 && rp->codeSuffix==0 ) continue; /* Will be default: */
+    if( rp->code[0]=='\n'
+     && rp->code[1]==0
+     && rp->codePrefix==0
+     && rp->codeSuffix==0
+    ){
+      /* No actions, so this will be part of the "default:" rule */
+      continue;
+    }
     fprintf(out,"      case %d: /* ", rp->iRule);
     writeRuleText(out, rp);
     fprintf(out, " */\n"); lineno++;
@@ -4795,7 +4802,9 @@ void ReportTable(
   fprintf(out,"      default:\n"); lineno++;
   for(rp=lemp->rule; rp; rp=rp->next){
     if( rp->code==0 ) continue;
-    assert( rp->code[0]=='\n' && rp->code[1]==0 && rp->codePrefix==0 && rp->codeSuffix==0 );
+    assert( rp->code[0]=='\n' && rp->code[1]==0 );
+    assert( rp->codePrefix==0 );
+    assert( rp->codeSuffix==0 );
     fprintf(out,"      /* (%d) ", rp->iRule);
     writeRuleText(out, rp);
     fprintf(out, " */ yytestcase(yyruleno==%d);\n", rp->iRule); lineno++;

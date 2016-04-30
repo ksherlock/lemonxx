@@ -53,9 +53,9 @@ statement_list ::= statement(E). {
 statement_list ::= statement_list statement.
 */
 
-statement(RV) ::= variable_assignment(E). { RV = E; }
+statement(X) ::= variable_assignment(X). 
 
-statement(RV) ::= function_assignment(E). { RV = E; }
+statement(X) ::= function_assignment(X).
 
 statement(RV) ::= expression(E). {
 	try {
@@ -174,15 +174,15 @@ expression(RV) ::= PLUS(OP) expression(E). [NOT]
 expression(RV) ::= MINUS(OP) expression(E). [NOT]
 { RV = lisp::make_unary(@OP, E); } 
 
-expression(RV) ::= term(X). { RV = X; }
-expression(RV) ::= conditional(X). { RV = X; }
-expression(RV) ::= list(X). { RV = X; }
+expression(X) ::= term(X).
+expression(X) ::= conditional(X).
+expression(X) ::= list(X).
 
 term(RV) ::= INTEGER(I). { RV = lisp::make_integer(I.intValue); }
 term(RV) ::= ATOM(A). { RV = lisp::make_atom(A.stringValue); }
 term(RV) ::= SYMBOL(S). { RV = lisp::make_symbol(S.stringValue); }
-term(RV) ::= lambda(X) . { RV = X; }
-term(RV) ::= function(X) . {RV = X; }
+term(X) ::= lambda(X) .
+term(X) ::= function(X) . 
 
 
 
@@ -193,13 +193,10 @@ term(RV) ::= function(X) . {RV = X; }
 conditional(RV) ::= LBRACKET conditional_list(L) RBRACKET.
 { RV = lisp::make_conditional(std::move(L)); }
 
-conditional_list(RV) ::= condition(C). {
-	RV = std::move(C);
-}
+conditional_list(C) ::= condition(C).
 
-conditional_list(RV) ::= conditional_list(L) SEMI condition(C). {
-	RV = std::move(L);
-	RV.insert(RV.end(), C.begin(), C.end());
+conditional_list(L) ::= conditional_list(L) SEMI condition(C). {
+	L.insert(L.end(), C.begin(), C.end());
 }
 
 condition(RV) ::= expression(P) ARROW expression(E). {
@@ -232,11 +229,11 @@ list(RV) ::= LPAREN error RPAREN. {
 
 %type expression_list {std::vector<lisp::cell_ptr> }
 
-expression_list(RV) ::= expression(E) .
-{ RV.push_back(E); }
+expression_list(L) ::= expression(E) .
+{ L.push_back(E); }
 
-expression_list(RV) ::= expression_list(L) COMMA expression(E) .
-{ RV = std::move(L); RV.push_back(E); }
+expression_list(L) ::= expression_list(L) COMMA expression(E) .
+{ L.push_back(E); }
 
 // parameter list, for function call or function definition.
 

@@ -85,7 +85,7 @@ namespace lisp {
 		virtual void mark() { alive = true; }
 
 	private:
-		bool alive = false;
+		bool alive = true;
 		type type = undefined;
 
 		friend void garbage_collect();

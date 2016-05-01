@@ -37,7 +37,7 @@ lisp.cpp lisp.h : lisp.lemon lisp_main.h lisp_cell.h lempar.cxx
 	../lemon++ -Tlempar.cxx $<
 
 %.cpp : %.lemon
-	../lemon++ $(LEMONFLAGS) $<
+	../lemon++ -T../lempar.cpp $(LEMONFLAGS) $<
 
 
 %.cpp : %.ragel

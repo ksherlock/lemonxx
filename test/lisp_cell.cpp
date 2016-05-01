@@ -112,6 +112,27 @@ namespace lisp {
 				});
 		}
 
+		cell_ptr builtin_help(const std::vector<cell_ptr> &argv, const environment &e) {
+			fputs(
+				"LISP HELP\n"
+				"builtin functions: atom, car, cdr, cons, eq, help, label, list\n"
+				"terminals: ATOM, symbol, number\n"
+				"assignment: symbol : expression\n"
+				"lists: (), (expression [, expression]* ), (expression [, expression]* . expression)\n"
+				"conditional: [expression → expression [; expression → expression]*]\n"
+				"function calls: symbol[arguments?]\n"
+				"arguments: expression [; expression]*\n"
+				"lambda: λ[[parameters?] ; expression]\n"
+				"function assignment: symbol[parameters?] : expression\n"
+				"parameters: symbol [; symbol]*\n"
+				"operators: + - * / = <> > >= < <= ¬ ∨ ∧ ⊻\n",
+
+				stdout
+			);
+
+			return nullptr;
+		}
+
 
 		builtin_cell builtin_eq_cell("eq", 2, builtin_eq);
 		builtin_cell builtin_atom_cell("atom", 1, builtin_atom);
@@ -120,6 +141,7 @@ namespace lisp {
 		builtin_cell builtin_cdr_cell("cdr", 1, builtin_cdr);
 		builtin_cell builtin_label_cell("label", 2, builtin_label);
 		builtin_cell builtin_list_cell("list", 0, builtin_list);
+		builtin_cell builtin_help_cell("help", 0, builtin_help);
 
 		std::unordered_map<std::string, cell_ptr> atom_map;
 		std::unordered_map<std::string, symbol_cell_ptr> symbol_map;
@@ -148,6 +170,7 @@ namespace lisp {
 		env.emplace(make_symbol("cons"), &builtin_cons_cell);
 		env.emplace(make_symbol("label"), &builtin_label_cell);
 		env.emplace(make_symbol("list"), &builtin_list_cell);
+		env.emplace(make_symbol("help"), &builtin_help_cell);
 
 		kTRUE = make_atom("T");
 		kFALSE = make_atom("F");

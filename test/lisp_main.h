@@ -53,6 +53,7 @@ class mexpr_parser : public lemon_base<Token>{
 
 private:
 	bool fail = false;
+protected:
 	unsigned error = 0;
 
 };

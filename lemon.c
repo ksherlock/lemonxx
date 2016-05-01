@@ -3665,7 +3665,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     /* The LHS symbol and the left-most RHS symbol are the same, so 
     ** direct writing is allowed */
     lhsdirect = 1;
-    lhsused = 1;
+    lhsused = 2;
     used[0] = 1;
     if( rp->lhs->dtnum!=rp->rhs[0]->dtnum ){
       ErrorMsg(lemp->filename,rp->ruleline,
@@ -3696,98 +3696,6 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   }
 
 
-#ifdef LEMONPLUSPLUS
-
-  append_str(0,0,0,0);
-
-  // call destructor on all un-named RHS tokens now
-  // so it doesn't interfere with lhs direct.
-
-  for(i=0; i<rp->nrhs; i++){
-
-    struct symbol *sp = rp->rhs[i];
-    int dtnum = sp_dtnum(sp);
-
-    /* generate destructors for all unnamed RHS. */
-    if (!rp->rhsalias[i]) {
-      // also generate destructors if NOT referenced!
-      append_str("  yy_destructor<", 0, 0, 0);
-      append_str(sp_datatype(lemp, sp), 0, 0, 0);
-      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
-    }
-  }
-
-
-  /* set up aliases. */
-  if (rp->lhsalias) {
-    if (lhsdirect) {
-      // A -> auto &A =
-      append_str("  auto &", 0, 0, 0);
-      append_str(rp->lhsalias, 0, 0, 0);
-      if (lhsused) {
-        append_str("=yy_cast<", 0, 0, 0);
-      }
-      else {
-        append_str("=yy_constructor<", 0, 0, 0);
-      }
-      append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
-      append_str(">(std::addressof(", 0, 0, 0);
-      append_str(zLhs, 0, 0, 0);
-      append_str("));\n", 0, 0, 0);
-    } else {
-      // generate a local variable.
-      append_str("  ", 0, 0, 0);
-      append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
-      append_str(" ", 0, 0, 0);
-      append_str(rp->lhsalias, 0, 0, 0);
-      append_str(";\n", 0, 0, 0);
-    }
-  }
-  /* if no alias, will be constructed in code suffix
-   * this prevents it from clobbering a rhs value
-   */
-
-  for(i=0; i<rp->nrhs; i++){
-    if (lhsdirect && lhsused && i == 0) continue; // lhs direct optimization / duplicate name.
-
-    if (rp->rhsalias[i]) {
-      struct symbol *sp = rp->rhs[i];
-      int dtnum = sp_dtnum(sp);
-
-      append_str("  auto &", 0, 0, 0);
-      append_str(rp->rhsalias[i], 0, 0, 0);
-      append_str("=yy_cast<", 0, 0, 0);
-      append_str(sp_datatype(lemp, sp), 0, 0, 0);
-      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
-    }
-  }
-  /* also generate major tokens  -- if @ in code.*/
-  if (strchr(rp->code, '@')) {
-    for(i=0; i<rp->nrhs; i++){
-      if (rp->rhsalias[i]) {
-
-        append_str("  const int yymsp_%d_major", 0, i, 0);
-        append_str(" = yymsp[%d].major;", 0 ,i-rp->nrhs+1, 0);
-        append_str(" /* @", 0, 0, 0);
-        append_str(rp->rhsalias[i], 0, 0, 0);
-        append_str(" */\n", 0, 0, 0);
-      }
-    }
-
-    /* and prevent unused variable warnings... */
-    for(i=0; i<rp->nrhs; i++){
-      if (rp->rhsalias[i]) {
-        append_str("  (void)yymsp_%d_major;\n", 0, i, 0);
-      }
-    }
-  }
-
-
-  // setup code goes in the prefix.
-  rp->codePrefix = Strsafe(append_str(0,0,0,0));
-
-#endif
-
   append_str(0,0,0,0);
 
 
@@ -3809,7 +3717,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
         append_str(zLhs,0,0,0);
         cp = xp;
         #endif
-        lhsused = 1;
+        lhsused |= 1;
       }else{
         for(i=0; i<rp->nrhs; i++){
           if( rp->rhsalias[i] && strcmp(cp,rp->rhsalias[i])==0 ){
@@ -3822,7 +3730,8 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
               /* If the argument is of the form @X then substituted
               ** the token number of X, not the value of X */
               #ifdef LEMONPLUSPLUS
-              append_str("yymsp_%d_major", -1, i, 0);
+              // if n < 0 , previous abs(n) chars overwritten.
+              append_str("yymsp_%d_major", -1, i+1, 0);
               #else
               append_str("yymsp[%d].major",-1,i-rp->nrhs+1,0);
               #endif
@@ -3859,25 +3768,11 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     lemp->errorcnt++;
   }
 
+#ifndef LEMONPLUSPLUS
   /* Generate destructor code for RHS minor values which are not referenced.
   ** Generate error messages for unused labels and duplicate labels.
   */
   for(i=0; i<rp->nrhs; i++){
-
-    #ifdef LEMONPLUSPLUS
-
-    struct symbol *sp = rp->rhs[i];
-    int dtnum = sp_dtnum(sp);
-
-    /* generate destructors for all RHS. */
-    /* except last if lhsdirect! */
-    if (rp->rhsalias[i] && (i > 0 || !lhsdirect)) {
-      append_str("  yy_destructor(", 0, 0, 0);
-      append_str(rp->rhsalias[i], 0, 0, 0);
-      append_str(");\n", 0, 0, 0);
-    }
-
-    #endif
 
     if( rp->rhsalias[i] ){
       if( i>0 ){
@@ -3906,23 +3801,129 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
         lemp->errorcnt++;
       }
     }
-    #ifndef LEMONPLUSPLUS
     else if( i>0 && has_destructor(rp->rhs[i],lemp) ){
       append_str("  yy_destructor(yypParser,%d,&yymsp[%d].minor);\n", 0,
          rp->rhs[i]->index,i-rp->nrhs+1);
     }
-    #endif
   }
 
   /* If unable to write LHS values directly into the stack, write the
   ** saved LHS value now. */
   if( lhsdirect==0 ){
-    #ifdef LEMONPLUSPLUS
-    //append_str("  yy_move<", 0, 0, 0);
-    //append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
-    //append_str(">(std::addressof(yymsp[%d].minor.yy%d), std::addressof(", 0, 1-rp->nrhs, rp->lhs->dtnum);
-    //append_str(zLhs, 0, 0, 0);
-    //append_str("));\n", 0, 0, 0);
+    append_str("  yymsp[%d].minor.yy%d = ", 0, 1-rp->nrhs, rp->lhs->dtnum);
+    append_str(zLhs, 0, 0, 0);
+    append_str(";\n", 0, 0, 0);
+  }
+
+  /* Suffix code generation complete */
+  cp = append_str(0,0,0,0);
+  if( cp && cp[0] ) rp->codeSuffix = Strsafe(cp);
+
+#endif
+
+
+#ifdef LEMONPLUSPLUS
+  /* lemon -- generate code prefix */
+
+  // call destructor on all un-named RHS tokens now
+  // so it doesn't interfere with lhs direct.
+
+  for(i=0; i<rp->nrhs; i++){
+
+    struct symbol *sp = rp->rhs[i];
+    int dtnum = sp_dtnum(sp);
+
+    /* generate destructors if minor is unused */
+    /* this also includes unnamed parts */
+    if ( (used[i] & 0x01) == 0 ) {
+      append_str("  yy_destructor<", 0, 0, 0);
+      append_str(sp_datatype(lemp, sp), 0, 0, 0);
+      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
+    }
+  }
+
+  /* set up aliases. */
+  if (rp->lhsalias && (lhsused & 0x01)) {
+    if (lhsdirect) {
+      // A -> auto &A =
+      append_str("  auto &", 0, 0, 0);
+      append_str(rp->lhsalias, 0, 0, 0);
+      if (lhsused & 0x02) {
+        append_str("=yy_cast<", 0, 0, 0);
+      }
+      else {
+        append_str("=yy_constructor<", 0, 0, 0);
+      }
+      append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
+      append_str(">(std::addressof(", 0, 0, 0);
+      append_str(zLhs, 0, 0, 0);
+      append_str("));\n", 0, 0, 0);
+    } else {
+      // generate a local variable.
+      append_str("  ", 0, 0, 0);
+      append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
+      append_str(" ", 0, 0, 0);
+      append_str(rp->lhsalias, 0, 0, 0);
+      append_str(";\n", 0, 0, 0);
+    }
+  }
+  /* if no alias, RHS will be constructed in code suffix
+   * this prevents it from clobbering a rhs value
+   */
+
+  i = 0;
+  if (lhsdirect && (lhsused & 0x02) ) ++i; // lhs direct optimization / duplicate name.
+
+  for( ; i<rp->nrhs; i++){
+
+    if (rp->rhsalias[i] && (used[i] & 0x01)) {
+      struct symbol *sp = rp->rhs[i];
+      int dtnum = sp_dtnum(sp);
+
+      append_str("  auto &", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str("=yy_cast<", 0, 0, 0);
+      append_str(sp_datatype(lemp, sp), 0, 0, 0);
+      append_str(">(std::addressof(yymsp[%d].minor.yy%d));\n", 0, i-rp->nrhs+1, dtnum);
+    }
+  }
+  /* also generate major tokens  -- if @ in code.*/
+  for(i=0; i<rp->nrhs; i++){
+    if ( rp->rhsalias[i] && (used[i] & 0x02) ) {
+
+      append_str("  const int yymsp_%d_major", 0, i+1, 0);
+      append_str(" = yymsp[%d].major;", 0 ,i-rp->nrhs+1, 0);
+      append_str(" /* @", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str(" */\n", 0, 0, 0);
+    }
+
+  }
+
+
+  // setup code goes in the prefix.
+  cp = append_str(0,0,0,0);
+  if ( cp && cp[0] ) rp->codePrefix = Strsafe(cp);
+
+  // and now generate code suffix!
+
+  i = 0;
+  if (lhsdirect && (lhsused & 0x02) ) ++i; // lhs direct optimization / duplicate name.
+  for( ; i<rp->nrhs; i++){
+    struct symbol *sp = rp->rhs[i];
+    int dtnum = sp_dtnum(sp);
+
+    /* generate destructors for names RHS. */
+    /* except last if lhsdirect! */
+    if (rp->rhsalias[i] && (used[i] & 0x01)) {
+      append_str("  yy_destructor(", 0, 0, 0);
+      append_str(rp->rhsalias[i], 0, 0, 0);
+      append_str(");\n", 0, 0, 0);
+    }
+  }
+
+  // construct lhs if necessary.
+  if (rp->lhsalias && !lhsdirect) {
 
     append_str("  yy_constructor<", 0, 0, 0);
     append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
@@ -3930,27 +3931,26 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     append_str(rp->lhsalias, 0, 0, 0);
     append_str("));\n", 0, 0, 0);
 
-    #else
-    append_str("  yymsp[%d].minor.yy%d = ", 0, 1-rp->nrhs, rp->lhs->dtnum);
-    append_str(zLhs, 0, 0, 0);
-    append_str(";\n", 0, 0, 0);
-    #endif
   }
-#ifdef LEMONPLUSPLUS
-  else if (!rp->lhsalias) {
-    // return value needs to be constructed, even if not named.
+
+  if (!rp->lhsalias) {
+     // return value needs to be constructed, even if not named.
     append_str("  yy_constructor<", 0, 0, 0);
     append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
     append_str(">(std::addressof(", 0, 0, 0);
     append_str(zLhs, 0, 0, 0);
     append_str("));\n", 0, 0, 0);
   }
+
+  cp = append_str(0,0,0,0);
+  if ( cp && cp[0] ) rp->codeSuffix = Strsafe(cp);
+
 #endif
 
 
-  /* Suffix code generation complete */
-  cp = append_str(0,0,0,0);
-  if( cp && cp[0] ) rp->codeSuffix = Strsafe(cp);
+
+
+
 
   return rc;
 }

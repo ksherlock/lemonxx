@@ -11,56 +11,105 @@ pointers as much (unless, of course, you want to!)
 
 
 ###lemon--
-	%token_type {int}
+	%token_type {std::any} // c++17
     %type number_list{std::vector<int>}
+    %type string_list{std::vector<std::string>}
     // or use a std::shared_ptr or std::unique_ptr...
 
-    program ::= number_list(L). {
+    program ::= list.
+
+    list ::= number_list(L). {
 
     	for (auto i : L) {
     		printf("%d\n", i);
     	}
     }
-    number_list(LHS) ::= number_list(L) NUMBER(N). {
-    	LHS = std::move(L);
-    	LHS.push_back(N);
-    }
-    number_list(LHS) ::= NUMBER(N). {
-    	LHS.push_back(N);
+
+    list ::= string_list(L). {
+
+        for (const auto &s : L) {
+            printf("%s\n", s.c_str());
+        }
     }
 
-The left-hand-side variable (`LHS`) will be default constructed before the code
-is executed.  The right-hand-side variables (`L` and `N`) will be destructed 
-after the code is executed. For comparison, Lemon zero-initializes the left-hand 
-side memory and  will only call the %destructor on the right-hand side for tokens
-that aren't referenced.
+    number_list(L) ::= NUMBER(N). {
+        L.push_back(std::any_cast<int>(N));
+    }
+
+    number_list(L) ::= number_list(L) NUMBER(N). {
+    	L.push_back(std::any_cast<int>(N));
+    }
+
+    string_list(L) ::= STRING(S). {
+        L.push_back(std::any_cast<std::string>(S));
+    }
+
+    string_list(L) ::= string_list(L) STRING(S). {
+        L.push_back(std::any_cast<std::string>(S));
+    }
 
 
 ###lemon
 
-	%token_type {int}
-    %type number_list{std::vector<int> *}
-    %destructor number_list { delete $$; }
+	%token_type {std::any *)}
+    %token_destructor { delete $$ }
 
-    program ::= number_list(L). {
+    %type number_list{std::vector<int> *}
+    %type string_list{std::vector<std::string> *}
+    %destructor number_list { delete $$ }
+    %destructor string_list { delete $$ }
+
+    program ::= list.
+
+    list ::= number_list(L). {
 
     	for (auto i : *L) {
     		printf("%d\n", i);
     	}
     	delete L;
     }
-    number_list(LHS) ::= number_list(L) NUMBER(N). {
-    	LHS = L;
-    	LHS->push_back(N);
-    }
-    number_list(LHS) ::= NUMBER(N). {
-    	LHS = new std::vector<int>();
-    	LHS->push_back(N);
+
+    list ::= string_list(L). {
+
+        for (const auto &s : *L) {
+            printf("%s\n", s.c_str());
+        }
+        delete L;
     }
 
 
-Ok, the lemon-- example isn't much of an improvement here.  But it might
-be an improvement for more complicated scenarios!
+    number_list(L) ::= NUMBER(N). {
+        L = new std::vector<int>();
+        L->push_back(std::any_cast<int>(*N));
+        delete N;
+    }
+
+    number_list(L) ::= number_list(L) NUMBER(N). {
+        L->push_back(std::any_cast<int>(*N));
+        delete N;
+    }
+
+    string_list(L) ::= NUMBER(N). {
+        L = new std::vector<std::string>();
+        L->push_back(std::any_cast<std::string>(*S));
+        delete S;
+    }
+
+    string_list(L) ::= string_list(L) STRING(S). {
+        L->push_back(std::any_cast<std::string>(*S));
+        delete S;
+    }
+
+### Notes
+
+I tried to make these examples fairly similar. Lemon-- automatically 
+destructs all right-hand-side variables and automatically constructs the
+left-hand-side variable.  Additionally, it uses placement constructors and
+destructors so you use non-POD data type instead of pointers.
+
+Standard lemon only calls the %destructor for right-hand-side terms that
+don't have an alias, hence the manual deletion above.
+
 
 ## Exceptions
 
@@ -76,6 +125,18 @@ In the above code, `RHS`'s destructor will not be called and it will leak.
 trying to continue parsing may or may not work (additionally, there may be
 other parser internals that are out of sync.)  The destructor leak is fixable
 but due to the other reasons, you'd be better off remaining unexceptional.
+
+
+## Other enhancements
+
+There is a new `%header` declaration. This is a block of code that will be
+written, verbatim, into the generated header file.
+
+    %header {
+        void *ParseAlloc(void *(*mallocProc)(size_t));
+        void ParseFree(void *p, void (*freeProc)(void*));
+        void Parse(void *yyp, int yymajor, struct MyTokenType *yyminor);
+    }
 
 # other versions for your consideration
 

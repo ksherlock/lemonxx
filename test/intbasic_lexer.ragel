@@ -132,6 +132,7 @@
 #include <string>
 #include <stdlib.h>
 #include <numeric>
+#include <unistd.h>
 
 #include "intbasic_token.h"
 #include "intbasic.h"

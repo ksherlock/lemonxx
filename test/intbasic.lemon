@@ -7,7 +7,14 @@
 
 %token_prefix tk
 %token_type {token &&}
+%default_type {void}
 
+%header {
+	struct token;
+	void Parse(void *, int, token &&);
+	void *ParseAlloc( void * (*)(size_t) );
+	void ParseFree( void *, void (*)(void *) );
+}
 
 %syntax_error {
 	fprintf(stderr, "Syntax Error\n");

@@ -126,10 +126,6 @@
 %token_type {int}
 %type number {int}
 
-//%type term {node_ptr}
-//%type expr {node_ptr}
-//%type unary {node_ptr}
-
 %default_type {node_ptr}
 
 program ::= expr(E). {
@@ -138,9 +134,7 @@ program ::= expr(E). {
 	printf("\n");
 }
 
-expr(LHS) ::= unary(RHS). {
-	LHS = std::move(RHS);
-} 
+expr(X) ::= unary(X).
 
 expr(LHS) ::= expr(A) PLUS expr(B). {
 	LHS = std::make_unique<binary_node>('+', std::move(A), std::move(B));
@@ -162,9 +156,7 @@ expr(LHS) ::= expr(A) MOD expr(B). {
 	LHS = std::make_unique<binary_node>('%', std::move(A), std::move(B));
 }
 
-unary(LHS) ::= term(RHS). {
-	LHS = std::move(RHS);
-}
+unary(X) ::= term(X).
 
 unary(LHS) ::= PLUS term(RHS). [NOT] {
 	LHS = std::move(RHS);
@@ -187,9 +179,7 @@ term(LHS) ::= LPAREN expr(E) RPAREN. {
 
 
 // this should really be performed via the lexer!  
-number(LHS) ::= NUMBER(N). {
-	LHS = N;
-}
+number(N) ::= NUMBER(N).
 
 number(LHS) ::= number(NN) NUMBER(N). {
 	LHS = NN * 10 + N;

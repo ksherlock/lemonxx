@@ -102,24 +102,22 @@ any_list ::= number_list(L). {
 }
 
 
-number_list(LHS) ::= number_list(L) NUMBER(RHS). {
-	LHS = std::move(L);
-	LHS.push_back(RHS);
-	//LHS.push_back(any_cast<int>(RHS));
+number_list(L) ::= number_list(L) NUMBER(RHS). {
+	L.push_back(RHS);
+	//L.push_back(any_cast<int>(RHS));
 }
 
-number_list(LHS) ::= NUMBER(RHS). {
-	LHS.push_back(RHS);
-	//LHS.push_back(any_cast<int>(RHS));
+number_list(L) ::= NUMBER(RHS). {
+	L.push_back(RHS);
+	//L.push_back(any_cast<int>(RHS));
 }
 
 
-string_list(LHS) ::= string_list(L) STRING(RHS). {
-	LHS = std::move(L);
-	LHS.emplace_back(std::move(RHS.stringValue));
-	//LHS.emplace_back(any_cast<std::string>(std::move(RHS)));
+string_list(L) ::= string_list(L) STRING(RHS). {
+	L.emplace_back(std::move(RHS.stringValue));
+	//L.emplace_back(any_cast<std::string>(std::move(RHS)));
 }
-string_list(LHS) ::= STRING(RHS). {
-	LHS.emplace_back(std::move(RHS.stringValue));
-	//LHS.emplace_back(any_cast<std::string>(std::move(RHS)));
+string_list(L) ::= STRING(RHS). {
+	L.emplace_back(std::move(RHS.stringValue));
+	//L.emplace_back(any_cast<std::string>(std::move(RHS)));
 }

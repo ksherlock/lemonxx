@@ -138,7 +138,45 @@ written, verbatim, into the generated header file.
         void Parse(void *yyp, int yymajor, struct MyTokenType *yyminor);
     }
 
+
+# Object Oriented?
+
+`test/lisp` uses an experimental object-oriented approach.  I find this
+works better in many cases.
+
+The inheritance hierarchy is:
+
+    lemon_base<TokenType> : your_parser : generated_lemon_parser
+
+`#define LEMON_BASE your_parser` in your header and use the `lempar.cxx`
+template.
+
+##Changes:
+
+* `%extra_argument` is gone. Put anything you need in `your_parser` (`public`
+or `protected` so it's accessible).
+* `%syntax_error`, `%parse_failure`, `%parse_accept`, and `%stack_overflow`
+may still be used but can also be moved into your class.
+* `ParseAlloc` and `ParseFree` are gone.  Use the normal constructors and
+destructors.
+
+`generated_lemon_parser` is hidden in an anonymous namespace, so it can only
+be created via a `%code` block in your parse definition.  The `lisp` example
+exposes it as such:
+
+    %code {
+      std::unique_ptr<your_parser> your_parser::create() {
+        return std::make_unique<yypParser>();
+      }
+    }
+
+`yypParser` inherits all your constructors so you can pass in any appropriate
+arguments.
+
 # other versions for your consideration
+
+Trying to make lemon work better with c++ is not a new idea, apparently.
+These are some other efforts. I have no knowledge of their suitability.
 
 * http://sourceforge.net/projects/lemonxx/
 * http://sourceforge.net/projects/lemonpp/

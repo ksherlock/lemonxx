@@ -146,7 +146,7 @@ works better in many cases.
 
 The inheritance hierarchy is:
 
-    lemon_base<TokenType> : your_parser : generated_lemon_parser
+    lemon_base<TokenType> : your_parser : yypParser
 
 `#define LEMON_BASE your_parser` in your header and use the `lempar.cxx`
 template.
@@ -160,7 +160,7 @@ may still be used but can also be moved into your class.
 * `ParseAlloc` and `ParseFree` are gone.  Use the normal constructors and
 destructors.
 
-`generated_lemon_parser` is hidden in an anonymous namespace, so it can only
+`yypParser` is hidden in an anonymous namespace, so it can only
 be created via a `%code` block in your parse definition.  The `lisp` example
 exposes it as such:
 

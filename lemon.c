@@ -3922,7 +3922,10 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
 
   // setup code goes in the prefix.
   cp = append_str(0,0,0,0);
-  if ( cp && cp[0] ) rp->codePrefix = Strsafe(cp);
+  if ( cp && cp[0] ) {
+    rp->codePrefix = Strsafe(cp);
+    rp->noCode = 0;
+  }
 
   // and now generate code suffix!
 
@@ -3962,14 +3965,11 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   }
 
   cp = append_str(0,0,0,0);
-  if ( cp && cp[0] ) rp->codeSuffix = Strsafe(cp);
-
+  if ( cp && cp[0] ) {
+    rp->codeSuffix = Strsafe(cp);
+    rp->noCode = 0;
+  }
 #endif
-
-
-
-
-
 
   return rc;
 }

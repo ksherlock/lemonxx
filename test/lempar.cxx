@@ -343,7 +343,7 @@ class yypParser : public LEMON_SUPER {
   int yyidxMax = 0;                 /* Maximum value of yyidx */
 #endif
 #ifndef YYNOERRORRECOVERY
-  int yyerrcnt = 0;                 /* Shifts left before out of the error */
+  int yyerrcnt = -1;                 /* Shifts left before out of the error */
 #endif
 #if YYSTACKDEPTH<=0
   int yystksz = 0;                  /* Current side of the stack */

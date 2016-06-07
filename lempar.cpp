@@ -1010,7 +1010,7 @@ void Parse(
         //yy_destructor(yypParser,(YYCODETYPE)yymajor,&yyminorunion);
         yymajor = YYNOCODE;
       }else{
-        while( yypParser->yytos >= &yypParser->yystack
+        while( yypParser->yytos >= &yypParser->yystack[0]
             && yymx != YYERRORSYMBOL
             && (yyact = yy_find_reduce_action(
                         yypParser->yytos->stateno,
@@ -1023,7 +1023,7 @@ void Parse(
           yy_parse_failed(yypParser);
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
-          yy_shift(yypParser,yyact,YYERRORSYMBOL,yyminor);
+          yy_shift(yypParser,yyact,YYERRORSYMBOL,std::forward<ParseTOKENTYPE>(yyminor));
         }
       }
       yypParser->yyerrcnt = 3;

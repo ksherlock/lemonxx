@@ -12,13 +12,19 @@
 
 	main := |*
 
-		'\n' { if (depth <= 0) { pp->parse(0); depth = 0; } };
+		'\n' { 
+			//printf("Will accept: %s\n", pp->will_accept() ? "yes" : "no");
+			if (pp->will_accept()) { pp->parse(0); }
+		};
 		[ \t]+ ;
 
-		'[' => { depth++; pp->parse(LBRACKET); };
-		']' => { depth--; pp->parse(RBRACKET); };
-		'(' => { depth++; pp->parse(LPAREN); };
-		')' => { depth--; pp->parse(RPAREN); };
+		# comment.
+		'#' [^\n]* ; 
+
+		'[' => { pp->parse(LBRACKET); };
+		']' => { pp->parse(RBRACKET); };
+		'(' => { pp->parse(LPAREN); };
+		')' => { pp->parse(RPAREN); };
 		'-' => { pp->parse(MINUS); };
 		'+' => { pp->parse(PLUS); };
 		'*' => { pp->parse(TIMES); };
@@ -88,7 +94,6 @@ int main(int argc, char **argv) {
 
 
 	auto pp = mexpr_parser::create();
-	int depth = 0; // quick and dirty way to check if () or [] extends across lines.
 
 	if (argc == 2 && std::string("-g") == argv[1]) pp->trace(stderr, "-> ");
 

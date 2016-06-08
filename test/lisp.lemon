@@ -17,6 +17,7 @@
 
 #include "lisp_main.h"
 #include "lisp_cell.h"
+#include "lisp.h"
 
 #define LEMON_SUPER mexpr_parser
 #define YYSTACKDEPTH 0
@@ -26,6 +27,29 @@
 	std::unique_ptr<mexpr_parser> mexpr_parser::create() {
 		return std::make_unique<yypParser>();
 	}
+
+	bool mexpr_parser::continuation() const {
+		yypParser *self = (yypParser *)this;
+		int depth[2] = { 0, 0 };
+		for (const auto &e : *self) {
+			switch(e.major) {
+				case LPAREN:
+					depth[0]++;
+					break;
+				case RPAREN:
+					depth[0]--;
+					break;
+				case LBRACKET:
+					depth[1]++;
+					break;
+				case RBRACKET:
+					depth[1]--;
+					break;
+			}
+		}
+		return depth[0] || depth[1];
+	}
+
 }
 
 %token_type    {Token}
@@ -42,11 +66,13 @@ program ::= statement_list.
 
 %type statement_list {void}
 
+/* this is here so errors don't pop back to a parse failure */
+statement_list ::= error.
+
 statement_list ::= statement(E). {
 	if (!error)
 		printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
 	lisp::clear_temp_list();
-	error = 0;
 }
 
 /*

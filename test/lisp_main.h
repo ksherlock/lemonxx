@@ -37,19 +37,24 @@ class mexpr_parser : public lemon_base<Token>{
 	template<class T>
 	void parse(int major, T &&t) { parse(major, Token(std::forward<T>(t))); }
 
+	bool continuation() const;
+
 	protected:
 	virtual void parse_failure() final override {
 		fail = true;
+		error = true;
 		//printf("Fail!\n");
 	}
 	virtual void parse_accept() final override {
 		//printf("Accept!\n");
+		error = 0;
 	}
 
 	virtual void syntax_error(int yymajor, token_type &yyminor) final override {
 		printf("Syntax Error!\n");
 		error++;
 	}
+
 
 private:
 	bool fail = false;

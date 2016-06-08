@@ -17,6 +17,9 @@ public:
 	//virtual typename std::enable_if<std::is_move_constructible<TokenType>::value, void>::type 
 	virtual void parse(int yymajor, TokenType &&yyminor) = 0;
     virtual void trace(FILE *, const char *) = 0;
+    virtual bool will_accept() const = 0;
+
+    virtual void reset() {}
 
 protected:
 	virtual void parse_accept() {}

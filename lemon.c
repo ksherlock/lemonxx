@@ -2452,17 +2452,19 @@ to follow the previous rule.");
           psp->insertLineMacro = 0;
         }else if( strcmp(x,"token_destructor")==0 ){
         #ifdef LEMONPLUSPLUS
+          static char *tmp;
           ErrorMsg(psp->filename,psp->tokenlineno,
             "%%token_destructor is deprecated in lemon--.  Use object destructors instead.");
-          psp->state = RESYNC_AFTER_DECL_ERROR;
+          psp->declargslot = &tmp;
         #else
           psp->declargslot = &psp->gp->tokendest;
         #endif
         }else if( strcmp(x,"default_destructor")==0 ){
         #ifdef LEMONPLUSPLUS
+          static char *tmp;
           ErrorMsg(psp->filename,psp->tokenlineno,
             "%%default_destructor is deprecated in lemon--.  Use object destructors instead.");
-          psp->state = RESYNC_AFTER_DECL_ERROR;
+          psp->declargslot = &tmp;
         #else
           psp->declargslot = &psp->gp->vardest;
         #endif

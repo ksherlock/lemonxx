@@ -877,7 +877,7 @@ static void yy_syntax_error(
   ParseTOKENTYPE yyminor         /* The minor type of the error token */
 ){
   ParseARG_FETCH;
-//#define TOKEN (yyminor.yy0)
+//#define TOKEN yyminor
   auto &TOKEN = yyminor;
 /************ Begin %syntax_error code ****************************************/
 %%

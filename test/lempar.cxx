@@ -533,6 +533,7 @@ void yy_move(
 void yypParser::yy_pop_parser_stack(){
   yyStackEntry *yymsp;
   assert( yytos!=0 );
+  assert( yytos > yystack );
   yymsp = yytos--;
 #ifndef NDEBUG
   if( yyTraceFILE ){
@@ -901,7 +902,10 @@ void yypParser::yy_accept(){
     fprintf(yyTraceFILE,"%sAccept!\n",yyTracePrompt);
   }
 #endif
-  while( yytos>yystack ) yy_pop_parser_stack();
+#ifndef YYNOERRORRECOVERY
+  yyerrcnt = -1;
+#endif
+  assert( yytos==yystack );
   /* Here code is inserted which will be executed whenever the
   ** parser accepts */
 /*********** Begin %parse_accept code *****************************************/
@@ -945,7 +949,6 @@ void yypParser::parse(
   int yyerrorhit = 0;   /* True if yymajor has invoked an error */
 #endif
 
-  /* (re)initialize the parser, if necessary */
   assert( yytos!=0 );
 
 #if !defined(YYERRORSYMBOL) && !defined(YYNOERRORRECOVERY)
@@ -1023,6 +1026,9 @@ void yypParser::parse(
         if( yytos < yystack || yymajor==0 ){
           //yy_destructor(yyminor);
           yy_parse_failed();
+#ifndef YYNOERRORRECOVERY
+          yyerrcnt = -1;
+#endif
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
           yy_shift(yyact,YYERRORSYMBOL,std::move(yyminor));
@@ -1059,6 +1065,9 @@ void yypParser::parse(
       //yy_destructor(yyminor);
       if( yyendofinput ){
         yy_parse_failed();
+#ifndef YYNOERRORRECOVERY
+        yyerrcnt = -1;
+#endif
       }
       yymajor = YYNOCODE;
 #endif

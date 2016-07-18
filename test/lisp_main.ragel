@@ -16,10 +16,11 @@
 			//printf("Will accept: %s\n", pp->will_accept() ? "yes" : "no");
 			if (pp->will_accept()) { pp->parse(0); }
 		};
-		[ \t]+ ;
-
 		# comment.
 		'#' [^\n]* ; 
+		# escaped new-line.
+		'\\' '\n' ;
+		[ \t]+ ;
 
 		'[' => { pp->parse(LBRACKET); };
 		']' => { pp->parse(RBRACKET); };

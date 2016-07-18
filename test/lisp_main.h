@@ -51,7 +51,7 @@ class mexpr_parser : public lemon_base<Token>{
 	}
 
 	virtual void syntax_error(int yymajor, token_type &yyminor) final override {
-		printf("Syntax Error!\n");
+		//printf("Syntax Error!\n");
 		error++;
 	}
 

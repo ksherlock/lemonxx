@@ -30,13 +30,13 @@ lisp_main.o : lisp_main.cpp lisp_cell.h lisp.h
 #%.o : %.cpp
 #	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-any.cpp : any.lemon
+any.cpp : any.lemon ../lemon++ ../lempar.cpp
 	../lemon++ nconflicts=2 $<
 
-lisp.cpp lisp.h : lisp.lemon lisp_main.h lisp_cell.h lempar.cxx
+lisp.cpp lisp.h : lisp.lemon lisp_main.h lisp_cell.h ../lemon++ lempar.cxx 
 	../lemon++ -Tlempar.cxx $<
 
-%.cpp : %.lemon ../lempar.cpp
+%.cpp : %.lemon ../lemon++ ../lempar.cpp 
 	../lemon++ -T../lempar.cpp $(LEMONFLAGS) $<
 
 

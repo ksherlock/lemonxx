@@ -20,7 +20,21 @@
 #include "lisp.h"
 
 #define LEMON_SUPER mexpr_parser
-#define YYSTACKDEPTH 0
+//#define YYSTACKDEPTH 0
+}
+// use dynamic stack (for testing purposes.)
+%stack_size 0
+
+%syntax_error {
+	
+	printf("Syntax Error! Suggested tokens:\n");
+	for (unsigned i = 0; i < YYERRORSYMBOL; ++i) {
+		int yyact = yy_find_shift_action(yytos->stateno, i);
+		if (yyact != YY_ERROR_ACTION && yyact != YY_NO_ACTION) {
+			printf("  %s\n", yyTokenName[i]);
+		}
+	}
+
 }
 
 %code{
@@ -28,6 +42,8 @@
 		return std::make_unique<yypParser>();
 	}
 
+
+	// no longer used since will_accept() does it better.
 	bool mexpr_parser::continuation() const {
 		yypParser *self = (yypParser *)this;
 		int depth[2] = { 0, 0 };
@@ -62,22 +78,19 @@
 %right NOT.
 
 program ::= .
-program ::= statement_list.
-
-%type statement_list {void}
-
-/* this is here so errors don't pop back to a parse failure */
-statement_list ::= error.
-
-statement_list ::= statement(E). {
-	if (!error)
+program ::= statement(E). {
+	
+	if (!error) {
 		printf("%s\n", E ? E->to_string().c_str() : "#<nil>");
+	}
 	lisp::clear_temp_list();
+	error = 0;
 }
 
-/*
-statement_list ::= statement_list statement.
-*/
+/* this is here so errors don't pop back to a parse failure */
+statement ::= error. {
+	error++;
+}
 
 statement(X) ::= variable_assignment(X). 
 

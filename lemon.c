@@ -25,6 +25,10 @@
 #define FILE_EXTENSION ".c"
 #endif
 
+#ifndef TEMPLATE_EXTENSION
+#define TEMPLATE_EXTENSION FILE_EXTENSION
+#endif
+
 #ifndef __WIN32__
 #   if defined(_WIN32) || defined(WIN32)
 #       define __WIN32__
@@ -3392,7 +3396,7 @@ PRIVATE void tplt_xfer(char *name, FILE *in, FILE *out, int *lineno)
 ** a pointer to the opened file. */
 PRIVATE FILE *tplt_open(struct lemon *lemp)
 {
-  static char templatename[] = "lempar" FILE_EXTENSION;
+  static char templatename[] = "lempar" TEMPLATE_EXTENSION;
   char buf[1000];
   FILE *in;
   char *tpltname;
@@ -3428,7 +3432,7 @@ PRIVATE FILE *tplt_open(struct lemon *lemp)
     tpltname = templatename;
   }else{
     #ifdef HOMEBREW_TEMPLATE_PATH
-    tpltname = HOMEBREW_TEMPLATE_PATH "lempar" FILE_EXTENSION ;
+    tpltname = HOMEBREW_TEMPLATE_PATH "lempar" TEMPLATE_EXTENSION ;
     #else
     tpltname = pathsearch(lemp->argv0,templatename,0);
     #endif

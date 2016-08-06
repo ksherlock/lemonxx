@@ -31,10 +31,12 @@ add a %code section to instantiate it.
 ** input grammar file:
 */
 #include <cstdio>
+#include <cstring>
 #include <cassert>
 #include <type_traits>
 #include <new>
 #include <memory>
+#include <algorithm>
 
 namespace {
 
@@ -555,7 +557,7 @@ yypParser::yypParser(Args&&... args) : LEMON_SUPER(std::forward<Args>(args)...)
     yystksz = 1;
   }
 #else
-  memset(yystack, 0, sizeof(yystack));
+  std::memset(yystack, 0, sizeof(yystack));
 #endif
 
   yytos = yystack;

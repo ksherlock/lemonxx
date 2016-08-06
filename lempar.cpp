@@ -23,6 +23,7 @@
 ** input grammar file:
 */
 #include <cstdio>
+#include <cstring>
 #include <cassert>
 #include <type_traits>
 #include <new>
@@ -441,7 +442,7 @@ void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE)){
   yyParser *pParser;
   pParser = (yyParser*)(*mallocProc)( (YYMALLOCARGTYPE)sizeof(yyParser) );
   if( pParser ){
-    memset(pParser, 0, sizeof(yyParser)); /* not safe if extra_argument is not POD */
+    std::memset(pParser, 0, sizeof(yyParser)); /* not safe if extra_argument is not POD */
 
 #ifdef YYTRACKMAXSTACKDEPTH
     pParser->yyhwm = 0;

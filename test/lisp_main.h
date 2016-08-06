@@ -1,7 +1,7 @@
 #ifndef __lisp_parser_h__
 #define __lisp_parser_h__
 
-#include "lemon_base.h"
+#include "../lemon_base.h"
 #include <cstdio>
 #include <memory>
 #include <string>

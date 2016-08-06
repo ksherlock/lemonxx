@@ -5,6 +5,8 @@
 #include <string>
 #include <numeric>
 
+#include <stdlib.h>
+
 %%{
 
 	machine lexer;
@@ -106,21 +108,25 @@ int main(int argc, char **argv) {
 	unsigned char *te;
 	%%write init;
 
+	char *line = NULL;
+	size_t line_cap = 0;
+
 	for(;;) {
 		unsigned char *p;
 		unsigned char *pe;
 		unsigned char *eof;
 
-		size_t length;
+		ssize_t length;
 
 		/*
 		 there isn't any need to copy buffers around between lines
 		 since the line ends with a newline or eof will be set.
 		 */
 
-		p = (unsigned char *)fgetln(stdin, &length);
-		if (!p || !length) break;
+		length = getline(&line, &line_cap, stdin);
+		if (length < 0) break;
 
+		p = (unsigned char *)line;
 		pe = p + length;
 		eof = nullptr;
 		if (p[length-1] != '\n') eof = pe;
@@ -132,6 +138,7 @@ int main(int argc, char **argv) {
 		}
 		if (eof) break;
 	}
+	free(line);
 	pp->parse(0);
 
 	return 0;

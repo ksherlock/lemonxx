@@ -1755,7 +1755,7 @@ int main(int argc, char **argv)
   exitcode = 0;
   if (lem.errorcnt > 0) exitcode = 1;
   if (lem.nconflict && lem.nconflict != nconflict) exitcode = 1;
-  //exitcode = ((lem.errorcnt > 0) || (lem.nconflict > 0)) ? 1 : 0;
+  /* exitcode = ((lem.errorcnt > 0) || (lem.nconflict > 0)) ? 1 : 0; */
   exit(exitcode);
   return (exitcode);
 }
@@ -3605,7 +3605,7 @@ const char *sp_datatype(struct lemon *lemp, struct symbol *sp) {
   switch (sp->type) {
     case NONTERMINAL:
       if (lemp->vartype) return lemp->vartype;
-      // drop though.
+      /* drop though. */
     case TERMINAL:
     case MULTITERMINAL:
       return lemp->tokentype ? lemp->tokentype : "void *";
@@ -3752,7 +3752,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
               /* If the argument is of the form @X then substituted
               ** the token number of X, not the value of X */
               #ifdef LEMONPLUSPLUS
-              // if n < 0 , previous abs(n) chars overwritten.
+              /* if n < 0 , previous abs(n) chars overwritten. */
               append_str("yymsp_%d_major", -1, i+1, 0);
               #else
               append_str("yymsp[%d].major",-1,i-rp->nrhs+1,0);
@@ -3850,16 +3850,17 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
 #ifdef LEMONPLUSPLUS
   /* lemon -- generate code prefix */
 
-  // call destructor on all un-named RHS tokens now
-  // so it doesn't interfere with lhs direct.
+  /* call destructor on all un-named RHS tokens now */
+  /* so it doesn't interfere with lhs direct. */
 
   for(i=0; i<rp->nrhs; i++){
 
     struct symbol *sp = rp->rhs[i];
     int dtnum = sp_dtnum(sp);
 
-    /* generate destructors if minor is unused */
-    /* this also includes unnamed parts */
+    /* generate destructors if minor is unused
+     * this also includes unnamed parts
+     */
     if ( (used[i] & 0x01) == 0 ) {
       append_str("  yy_destructor<", 0, 0, 0);
       append_str(sp_datatype(lemp, sp), 0, 0, 0);
@@ -3870,7 +3871,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   /* set up aliases. */
   if (rp->lhsalias && (lhsused & 0x01)) {
     if (lhsdirect) {
-      // A -> auto &A =
+      /* A -> auto &A = */
       append_str("  auto &", 0, 0, 0);
       append_str(rp->lhsalias, 0, 0, 0);
       if (lhsused & 0x02) {
@@ -3884,7 +3885,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
       append_str(zLhs, 0, 0, 0);
       append_str("));\n", 0, 0, 0);
     } else {
-      // generate a local variable.
+      /* generate a local variable. */
       append_str("  ", 0, 0, 0);
       append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
       append_str(" ", 0, 0, 0);
@@ -3897,7 +3898,8 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
    */
 
   i = 0;
-  if (lhsdirect && (lhsused & 0x02) ) ++i; // lhs direct optimization / duplicate name.
+  /* lhs direct optimization / duplicate name. */
+  if (lhsdirect && (lhsused & 0x02) ) ++i; 
 
   for( ; i<rp->nrhs; i++){
 
@@ -3926,23 +3928,25 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   }
 
 
-  // setup code goes in the prefix.
+  /* setup code goes in the prefix. */
   cp = append_str(0,0,0,0);
   if ( cp && cp[0] ) {
     rp->codePrefix = Strsafe(cp);
     rp->noCode = 0;
   }
 
-  // and now generate code suffix!
+  /* and now generate code suffix! */
 
   i = 0;
-  if (lhsdirect && (lhsused & 0x02) ) ++i; // lhs direct optimization / duplicate name.
+  /* lhs direct optimization / duplicate name. */
+  if (lhsdirect && (lhsused & 0x02) ) ++i;
   for( ; i<rp->nrhs; i++){
     struct symbol *sp = rp->rhs[i];
     int dtnum = sp_dtnum(sp);
 
-    /* generate destructors for names RHS. */
-    /* except last if lhsdirect! */
+    /* generate destructors for names RHS.
+     * except last if lhsdirect!
+     */
     if (rp->rhsalias[i] && (used[i] & 0x01)) {
       append_str("  yy_destructor(", 0, 0, 0);
       append_str(rp->rhsalias[i], 0, 0, 0);
@@ -3950,7 +3954,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     }
   }
 
-  // construct lhs if necessary.
+  /* construct lhs if necessary. */
   if (rp->lhsalias && !lhsdirect) {
 
     append_str("  yy_constructor<", 0, 0, 0);
@@ -3962,7 +3966,7 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
   }
 
   if (!rp->lhsalias) {
-     // return value needs to be constructed, even if not named.
+     /* return value needs to be constructed, even if not named. */
     append_str("  yy_constructor<", 0, 0, 0);
     append_str(sp_datatype(lemp, rp->lhs), 0, 0, 0);
     append_str(">(std::addressof(", 0, 0, 0);
@@ -4614,15 +4618,15 @@ void ReportTable(
 
   /* generate non-terminal destructors.   */
 
-  // mark which ones have been processed.
+  /* mark which ones have been processed. */
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
-    //if (sp->type == MULTITERMINAL) continue;
+    /* if (sp->type == MULTITERMINAL) continue; */
 
     sp->destructor = "";
   }
 
-  // error symbol, if needed
+  /* error symbol, if needed */
   if (lemp->errsym->useCnt) {
     struct symbol *sp = lemp->errsym;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;
@@ -4731,19 +4735,20 @@ void ReportTable(
   tplt_xfer(lemp->name,in,out,&lineno);
 
 #ifdef LEMONPLUSPLUS
-  // generate move commands.
-  // yyDest is constructed.  yySource is destructed.
-  // generate terminals
+  /* generate move commands.
+   * yyDest is constructed.  yySource is destructed.
+   * generate terminals
+   */
 
 
-  // mark which ones have been processed.
+  /* mark which ones have been processed. */
   for(i=0; i<lemp->nsymbol; i++){
     struct symbol *sp = lemp->symbols[i];
-    //if (sp->type == MULTITERMINAL) continue;
+    /* if (sp->type == MULTITERMINAL) continue; */
     sp->destructor = "";
   }
 
-  // error symbol, if needed
+  /* error symbol, if needed */
   if (lemp->errsym->useCnt) {
     struct symbol *sp = lemp->errsym;
     fprintf(out,"    case %d: /* %s */\n", sp->index, sp->name); lineno++;

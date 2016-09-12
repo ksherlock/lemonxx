@@ -373,8 +373,8 @@ class yypParser : public LEMON_SUPER {
   void yy_transfer(yyStackEntry *yySource, yyStackEntry *yyDest);
 
   void yy_pop_parser_stack();
-  static unsigned yy_find_shift_action(int stateno, YYCODETYPE iLookAhead);
-  static int yy_find_reduce_action(int stateno, YYCODETYPE iLookAhead);
+  unsigned yy_find_shift_action(int stateno, YYCODETYPE iLookAhead) const;
+  int yy_find_reduce_action(int stateno, YYCODETYPE iLookAhead) const;
 
   void yy_shift(int yyNewState, int yyMajor, ParseTOKENTYPE &&yypMinor);
   void yy_reduce(unsigned int yyruleno);
@@ -606,10 +606,10 @@ yypParser::~yypParser() {
 ** Find the appropriate action for a parser given the terminal
 ** look-ahead token iLookAhead.
 */
-unsigned int yypParser::yy_find_shift_action(
+unsigned yypParser::yy_find_shift_action(
   int stateno,              /* Current state number */
   YYCODETYPE iLookAhead     /* The look-ahead token */
-) {
+) const {
   int i;
  
   if( stateno>=YY_MIN_REDUCE ) return stateno;
@@ -671,7 +671,7 @@ unsigned int yypParser::yy_find_shift_action(
 int yypParser::yy_find_reduce_action(
   int stateno,              /* Current state number */
   YYCODETYPE iLookAhead     /* The look-ahead token */
-){
+) const {
   int i;
 #ifdef YYERRORSYMBOL
   if( stateno>YY_REDUCE_COUNT ){

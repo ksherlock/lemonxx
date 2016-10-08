@@ -343,7 +343,7 @@ class yypParser : public LEMON_SUPER {
     }
     #endif
 
-    const yyStackEntry *begin() const { return &yystack[0]; }
+    const yyStackEntry *begin() const { return yystack; }
     const yyStackEntry *end() const { return yytos + 1; }
 
   protected:
@@ -1018,7 +1018,7 @@ void yypParser::parse(
         //yy_destructor(yyminor);
         yymajor = YYNOCODE;
       }else{
-        while( yytos >= &yystack[0]
+        while( yytos >= yystack
             && yymx != YYERRORSYMBOL
             && (yyact = yy_find_reduce_action(
                         yytos->stateno,

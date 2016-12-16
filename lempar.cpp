@@ -677,7 +677,6 @@ static int yy_find_reduce_action(
 */
 static void yyStackOverflow(yyParser *yypParser){
    ParseARG_FETCH;
-   yypParser->yytos--;
 #ifndef NDEBUG
    if( yyTraceFILE ){
      fprintf(yyTraceFILE,"%sStack Overflow!\n",yyTracePrompt);
@@ -731,12 +730,14 @@ static void yy_shift(
 #endif
 #if YYSTACKDEPTH>0 
   if( yypParser->yytos>=&yypParser->yystack[YYSTACKDEPTH] ){
+    yypParser->yytos--;
     yyStackOverflow(yypParser);
     return;
   }
 #else
   if( yypParser->yytos>=&yypParser->yystack[yypParser->yystksz] ){
     if( yyGrowStack(yypParser) ){
+      yypParser->yytos--;
       yyStackOverflow(yypParser);
       return;
     }

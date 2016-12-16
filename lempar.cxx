@@ -699,7 +699,6 @@ int yypParser::yy_find_reduce_action(
 ** The following routine is called if the stack overflows.
 */
 void yypParser::yyStackOverflow(){
-   yytos--;
 #ifndef NDEBUG
    if( yyTraceFILE ){
      fprintf(yyTraceFILE,"%sStack Overflow!\n",yyTracePrompt);
@@ -749,12 +748,14 @@ void yypParser::yy_shift(
 #endif
 #if YYSTACKDEPTH>0 
   if( yytos>=&yystack[YYSTACKDEPTH] ){
+    yytos--;
     yyStackOverflow();
     return;
   }
 #else
   if( yytos>=&yystack[yystksz] ){
     if( yyGrowStack() ){
+      yytos--;
       yyStackOverflow();
       return;
     }

@@ -89,7 +89,7 @@ pointers as much (unless, of course, you want to!)
         delete N;
     }
 
-    string_list(L) ::= NUMBER(N). {
+    string_list(L) ::= STRING(S). {
         L = new std::vector<std::string>();
         L->push_back(std::any_cast<std::string>(*S));
         delete S;

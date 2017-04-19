@@ -314,13 +314,37 @@ namespace lisp {
 	std::string pair_cell::to_string() const {
 		std::string tmp;
 		tmp.push_back('(');
-		if (car) {
-			tmp.append(car->to_string());
+
+		// if this is a normal list, print it with commas
+		const pair_cell *p = this;
+		while (p) {
+			if (!p->car) break;
+			if (p->cdr && !p->cdr->is<pair>()) break;
+			p = (const pair_cell *)p->cdr;
 		}
-		if (cdr) {
-			tmp.append(" . ");
-			tmp.append(cdr->to_string());
+		if (p == nullptr) {
+			// simple, normal list.
+			p = this;
+			while (p) {
+				tmp.append(p->car->to_string());
+				if (p->cdr) {
+					tmp.append(", ");
+				}
+				p = (const pair_cell *)p->cdr;
+			}
+		} else {
+
+			if (car) {
+				tmp.append(car->to_string());
+			}
+			if (cdr) {
+				tmp.append(" . ");
+				tmp.append(cdr->to_string());
+			}
+
 		}
+
+
 		tmp.push_back(')');
 		return tmp;
 	}

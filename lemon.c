@@ -3711,13 +3711,18 @@ PRIVATE int translate_code(struct lemon *lemp, struct rule *rp){
     }
     #endif
   }
+
+#ifdef LEMONPLUSPLUS
+  /* lemon++ doesn't use yylhsminor */
+  sprintf(zLhs, "yymsp[%d].minor.yy%d",1-rp->nrhs,rp->lhs->dtnum);
+#else
   if( lhsdirect ){
     sprintf(zLhs, "yymsp[%d].minor.yy%d",1-rp->nrhs,rp->lhs->dtnum);
   }else{
     rc = 1;
     sprintf(zLhs, "yylhsminor.yy%d",rp->lhs->dtnum);
   }
-
+#endif
 
   append_str(0,0,0,0);
 

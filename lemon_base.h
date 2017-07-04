@@ -9,17 +9,13 @@ public:
 	
 	virtual ~lemon_base() = default;
 
-	#if 0
-	virtual typename std::enable_if<std::is_copy_constructible<TokenType>::value, void>::type 
-	parse(int yymajor, const TokenType &yyminor) = 0;
-	#endif
-
 	//virtual typename std::enable_if<std::is_move_constructible<TokenType>::value, void>::type 
 	virtual void parse(int yymajor, TokenType &&yyminor) = 0;
-    virtual void trace(FILE *, const char *) = 0;
-    virtual bool will_accept() const = 0;
 
-    virtual void reset() {}
+	virtual void trace(FILE *, const char *) {}
+
+	virtual bool will_accept() const = 0;
+	virtual void reset() {}
 
 protected:
 	virtual void parse_accept() {}

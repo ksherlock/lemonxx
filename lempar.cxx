@@ -329,7 +329,9 @@ class yypParser : public LEMON_SUPER {
     virtual ~yypParser() override final;
     virtual void parse(int, ParseTOKENTYPE &&) override final;
 
+#ifndef NDEBUG
     virtual void trace(FILE *, const char *) final override;
+#endif
 
     virtual void reset() final override;
     virtual bool will_accept() const final override;

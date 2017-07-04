@@ -362,6 +362,7 @@ class yypParser : public LEMON_SUPER {
   int yyGrowStack();
 #else
   yyStackEntry yystack[YYSTACKDEPTH];  /* The parser's stack */
+  yyStackEntry *yystackEnd;            /* Last entry in the stack */
 #endif
 
 
@@ -567,7 +568,9 @@ yypParser::yypParser(Args&&... args) : LEMON_SUPER(std::forward<Args>(args)...)
   yytos = yystack;
   yystack[0].stateno = 0;
   yystack[0].major = 0;
-
+#if YYSTACKDEPTH>0
+  yystackEnd = &yystack[YYSTACKDEPTH-1];
+#endif
 }
 
 void yypParser::reset() {
@@ -747,7 +750,7 @@ void yypParser::yy_shift(
   }
 #endif
 #if YYSTACKDEPTH>0 
-  if( yytos>=&yystack[YYSTACKDEPTH] ){
+  if( yytos>yystackEnd ){
     yytos--;
     yyStackOverflow();
     return;
@@ -776,9 +779,9 @@ void yypParser::yy_shift(
 /* The following table contains information about every rule that
 ** is used during the reduce.
 */
-const struct {
-  YYCODETYPE lhs;         /* Symbol on the left-hand side of the rule */
-  unsigned char nrhs;     /* Number of right-hand side symbols in the rule */
+static const struct {
+  YYCODETYPE lhs;       /* Symbol on the left-hand side of the rule */
+  signed char nrhs;     /* Negative of the number of RHS symbols in the rule */
 } yyRuleInfo[] = {
 %%
 };
@@ -799,7 +802,7 @@ void yypParser::yy_reduce(
   if( yyTraceFILE && yyruleno<(int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])) ){
     yysize = yyRuleInfo[yyruleno].nrhs;
     fprintf(yyTraceFILE, "%sReduce [%s], go to state %d.\n", yyTracePrompt,
-      yyRuleName[yyruleno], yymsp[-yysize].stateno);
+      yyRuleName[yyruleno], yymsp[yysize].stateno);
   }
 #endif /* NDEBUG */
 
@@ -814,7 +817,7 @@ void yypParser::yy_reduce(
     }
 #endif
 #if YYSTACKDEPTH>0 
-    if( yytos>=&yystack[YYSTACKDEPTH-1] ){
+    if( yytos>=yystackEnd ){
       yyStackOverflow();
       return;
     }
@@ -845,20 +848,24 @@ void yypParser::yy_reduce(
   assert( yyruleno<sizeof(yyRuleInfo)/sizeof(yyRuleInfo[0]) );
   yygoto = yyRuleInfo[yyruleno].lhs;
   yysize = yyRuleInfo[yyruleno].nrhs;
-  yyact = yy_find_reduce_action(yymsp[-yysize].stateno,(YYCODETYPE)yygoto);
-  if( yyact <= YY_MAX_SHIFTREDUCE ){
-    if( yyact>YY_MAX_SHIFT ){
-      yyact += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
-    }
-    yymsp -= yysize-1;
+  yyact = yy_find_reduce_action(yymsp[yysize].stateno,(YYCODETYPE)yygoto);
+
+  /* There are no SHIFTREDUCE actions on nonterminals because the table
+  ** generator has simplified them to pure REDUCE actions. */
+  assert( !(yyact>YY_MAX_SHIFT && yyact<=YY_MAX_SHIFTREDUCE) );
+
+  /* It is not possible for a REDUCE to be followed by an error */
+  assert( yyact!=YY_ERROR_ACTION );
+
+  if( yyact==YY_ACCEPT_ACTION ){
+    yytos += yysize;
+    yy_accept();
+  }else{
+    yymsp += yysize+1;
     yytos = yymsp;
     yymsp->stateno = (YYACTIONTYPE)yyact;
     yymsp->major = (YYCODETYPE)yygoto;
     yyTraceShift(yyact);
-  }else{
-    assert( yyact == YY_ACCEPT_ACTION );
-    yytos -= yysize;
-    yy_accept();
   }
 }
 
@@ -1126,7 +1133,7 @@ bool yypParser::will_accept() const {
       unsigned yyruleno = yyact - YY_MIN_REDUCE;
 
       int yygoto = yyRuleInfo[yyruleno].lhs;
-      int yysize = yyRuleInfo[yyruleno].nrhs;
+      int yysize = -yyRuleInfo[yyruleno].nrhs; /* stored as negative value */
 
       while (yysize--) stack.pop_back();
 

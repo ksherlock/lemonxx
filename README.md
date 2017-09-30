@@ -11,7 +11,8 @@ pointers as much (unless, of course, you want to!)
 
 
 ###lemon--
-	%token_type {std::any} // c++17
+
+    %token_type {std::any} // c++17
     %type number_list{std::vector<int>}
     %type string_list{std::vector<std::string>}
     // or use a std::shared_ptr or std::unique_ptr...
@@ -51,7 +52,7 @@ pointers as much (unless, of course, you want to!)
 
 ###lemon
 
-	%token_type {std::any *)}
+    %token_type {std::any *)}
     %token_destructor { delete $$ }
 
     %type number_list{std::vector<int> *}

@@ -1,4 +1,3 @@
-CC = clang
 CFLAGS = -g -std=c89
 
 ifdef HOMEBREW_TEMPLATE_PATH

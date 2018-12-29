@@ -28,8 +28,9 @@
 %syntax_error {
 	
 	printf("Syntax Error! Suggested tokens:\n");
-	for (unsigned i = 0; i < YYERRORSYMBOL; ++i) {
-		int yyact = yy_find_shift_action(yytos->stateno, i);
+	const YYACTIONTYPE stateno = yytos->stateno;
+	for (unsigned i = 0; i < YYNTOKEN; ++i) {
+		int yyact = yy_find_shift_action(i, stateno);
 		if (yyact != YY_ERROR_ACTION && yyact != YY_NO_ACTION) {
 			printf("  %s\n", yyTokenName[i]);
 		}
@@ -78,6 +79,9 @@
 %right NOT.
 
 program ::= .
+program ::= error. {
+	error++;
+}
 program ::= statement(E). {
 	
 	if (!error) {
@@ -88,10 +92,12 @@ program ::= statement(E). {
 }
 
 /* this is here so errors don't pop back to a parse failure */
+/* currently generates a shift-reduce instead of a shift and has problems... */
+/*
 statement ::= error. {
 	error++;
 }
-
+*/
 statement(X) ::= variable_assignment(X). 
 
 statement(X) ::= function_assignment(X).

@@ -18,6 +18,7 @@ public:
 	virtual void parse(int yymajor, TokenType &&yyminor) = 0;
     virtual void trace(FILE *, const char *) = 0;
     virtual bool will_accept() const = 0;
+    virtual int fallback(int iToken) const = 0;
 
     virtual void reset() {}
 

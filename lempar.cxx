@@ -1100,14 +1100,14 @@ void yypParser::parse(
         //yy_destructor(yyminor);
         yymajor = YYNOCODE;
       }else{
-        while( yytos >= yystack
+        while( yytos > yystack
             && (yyact = yy_find_reduce_action(
                         yytos->stateno,
                         YYERRORSYMBOL)) > YY_MAX_SHIFTREDUCE
         ){
           yy_pop_parser_stack();
         }
-        if( yytos < yystack || yymajor==0 ){
+        if( yytos == yystack || yymajor==0 ){
           //yy_destructor(yyminor);
           yy_parse_failed();
 #ifndef YYNOERRORRECOVERY

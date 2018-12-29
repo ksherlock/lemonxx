@@ -228,7 +228,7 @@ void ReportOutput(struct lemon *);
 void ReportTable(struct lemon *, int);
 void ReportHeader(struct lemon *);
 void CompressTables(struct lemon *);
-void ResortStates(struct lemon *);
+void ResortStates(struct lemon *, int);
 
 /********** From the file "set.h" ****************************************/
 void  SetSize(int);             /* All sets will be of size N */
@@ -1781,7 +1781,7 @@ int main(int argc, char **argv)
     /* Reorder and renumber the states so that states with fewer choices
     ** occur at the end.  This is an optimization that helps make the
     ** generated parser tables smaller. */
-    if( noResort==0 ) ResortStates(&lem);
+    /* if( noResort==0 ) */ ResortStates(&lem, noResort);
 
     /* Generate a report of the parser generated.  (the "y.output" file) */
     if( !quiet ) ReportOutput(&lem);
@@ -5280,7 +5280,7 @@ static int stateResortCompare(const void *a, const void *b){
 ** Renumber and resort states so that states with fewer choices
 ** occur at the end.  Except, keep state 0 as the first state.
 */
-void ResortStates(struct lemon *lemp)
+void ResortStates(struct lemon *lemp, int noResort)
 {
   int i;
   struct state *stp;
@@ -5306,12 +5306,14 @@ void ResortStates(struct lemon *lemp)
       }
     }
   }
+  lemp->nxstate = lemp->nstate;
+  if (noResort) return;
+
   qsort(&lemp->sorted[1], lemp->nstate-1, sizeof(lemp->sorted[0]),
         stateResortCompare);
   for(i=0; i<lemp->nstate; i++){
     lemp->sorted[i]->statenum = i;
   }
-  lemp->nxstate = lemp->nstate;
   while( lemp->nxstate>1 && lemp->sorted[lemp->nxstate-1]->autoReduce ){
     lemp->nxstate--;
   }

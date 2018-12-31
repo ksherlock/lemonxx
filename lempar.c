@@ -514,12 +514,12 @@ static YYACTIONTYPE yy_find_shift_action(
   int i;
 
   if( stateno>YY_MAX_SHIFT ) return stateno;
-  assert( stateno <= YY_SHIFT_COUNT );
+  assert( stateno <= YY_SHIFT_MAX );
 #if defined(YYCOVERAGE)
   yycoverage[stateno][iLookAhead] = 1;
 #endif
   do{
-    i = yy_shift_ofst[stateno];
+    i = stateno <= YY_SHIFT_COUNT ? yy_shift_ofst[stateno] : stateno;
     assert( i>=0 );
     /* assert( i+YYNTOKEN<=(int)YY_NLOOKAHEAD ); */
     assert( iLookAhead!=YYNOCODE );

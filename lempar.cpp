@@ -827,6 +827,44 @@ static void yy_shift(
   yyTraceShift(yypParser, yyNewState, "Shift");
 }
 
+#ifdef YYERRORSYMBOL
+static void yy_shift_error(
+  yyParser *yypParser,          /* The parser to be shifted */
+  YYACTIONTYPE yyNewState,      /* The new state to shift in */
+){
+  yyStackEntry *yytos;
+  yypParser->yytos++;
+#ifdef YYTRACKMAXSTACKDEPTH
+  if( (int)(yypParser->yytos - yypParser->yystack)>yypParser->yyhwm ){
+    yypParser->yyhwm++;
+    assert( yypParser->yyhwm == (int)(yypParser->yytos - yypParser->yystack) );
+  }
+#endif
+#if YYSTACKDEPTH>0 
+  if( yypParser->yytos>yypParser->yystackEnd ){
+    yypParser->yytos--;
+    yyStackOverflow(yypParser);
+    return;
+  }
+#else
+  if( yypParser->yytos>=&yypParser->yystack[yypParser->yystksz] ){
+    if( yyGrowStack(yypParser) ){
+      yypParser->yytos--;
+      yyStackOverflow(yypParser);
+      return;
+    }
+  }
+#endif
+  if( yyNewState > YY_MAX_SHIFT ){
+    yyNewState += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
+  }
+  yytos = yypParser->yytos;
+  yytos->stateno = yyNewState;
+  yytos->major = YYERRORSYMBOL;
+  yytos->minor.YYERRSYMDT = 0;
+}
+#endif
+
 /* For rule J, yyRuleInfoLhs[J] contains the symbol on the left-hand side
 ** of that rule */
 static const YYCODETYPE yyRuleInfoLhs[] = {
@@ -1147,7 +1185,7 @@ void Parse(
 #endif
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
-          yy_shift(yypParser,yyact,YYERRORSYMBOL,std::forward<ParseTOKENTYPE>(yyminor));
+          yy_shift_error(yypParser,yyact);
         }
       }
       yypParser->yyerrcnt = 3;

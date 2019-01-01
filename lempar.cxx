@@ -389,6 +389,9 @@ class yypParser : public LEMON_SUPER {
   YYACTIONTYPE yy_find_reduce_action(YYACTIONTYPE stateno, YYCODETYPE iLookAhead) const;
 
   void yy_shift(YYACTIONTYPE yyNewState, YYCODETYPE yyMajor, ParseTOKENTYPE &&yypMinor);
+#ifdef YYERRORSYMBOL
+  void yy_shift_error(YYACTIONTYPE yyNewState);
+#endif
   YYACTIONTYPE yy_reduce(unsigned int yyruleno, int yyLookahead, const ParseTOKENTYPE &yyLookaheadToken);
   void yyStackOverflow();
 
@@ -826,6 +829,42 @@ void yypParser::yy_shift(
   yyTraceShift(yyNewState, "Shift");
 }
 
+#ifdef YYERRORSYMBOL
+void yypParser::yy_shift_error(
+  YYACTIONTYPE yyNewState,               /* The new state to shift in */
+){
+  yytos++;
+#ifdef YYTRACKMAXSTACKDEPTH
+  if( yyidx()>yyhwm ){
+    yyhwm++;
+    assert(yyhwm == yyidx());
+  }
+#endif
+#if YYSTACKDEPTH>0 
+  if( yytos>yystackEnd ){
+    yytos--;
+    yyStackOverflow();
+    return;
+  }
+#else
+  if( yytos>=&yystack[yystksz] ){
+    if( yyGrowStack() ){
+      yytos--;
+      yyStackOverflow();
+      return;
+    }
+  }
+#endif
+  if( yyNewState > YY_MAX_SHIFT ){
+    yyNewState += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;
+  }
+  yytos->stateno = yyNewState;
+  yytos->major = YYERRORSYMBOL;
+  yytos->minor.YYERRSYMDT = 0;
+  yyTraceShift(yyNewState, "Shift");
+}
+#endif
+
 /* For rule J, yyRuleInfoLhs[J] contains the symbol on the left-hand side
 ** of that rule */
 static const YYCODETYPE yyRuleInfoLhs[] = {
@@ -1115,7 +1154,7 @@ void yypParser::parse(
 #endif
           yymajor = YYNOCODE;
         }else if( yymx!=YYERRORSYMBOL ){
-          yy_shift(yyact,YYERRORSYMBOL,std::move(yyminor));
+          yy_shift_error(yyact);
         }
       }
       yyerrcnt = 3;

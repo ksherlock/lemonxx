@@ -33,6 +33,9 @@ error-2.o : error.cpp
 error.cpp : error.lemon ../lemon++ ../lempar.cxx 
 	../lemon++ -T../lempar.cxx $(LEMONFLAGS) $<
 
+expr.o : expr.cpp
+	../lemon++ -T../lempar.cpp $(LEMONFLAGS) $<
+
 
 % : %.o
 	$(CXX) $(LDFLAGS) $^ -o $@
